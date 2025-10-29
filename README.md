@@ -1,6 +1,28 @@
-# 💧 Water & Sanitation Service Analytics Dashboard
+# 💧 African Water & Sanitation Regulatory Dashboard
 
-A Streamlit multipage dashboard showcasing water and sanitation service performance across 4 African countries (Cameroon, Lesotho, Malawi, Uganda) from 2020-2024.
+An interactive multi-country dashboard designed for water sector regulators, policymakers, and government officials to monitor compliance, track performance trends, and identify service delivery gaps across 4 African countries (Cameroon, Lesotho, Malawi, Uganda) from 2020-2024.
+
+**Track progress toward SDG 6 targets** • **Benchmark performance** • **Identify intervention priorities**
+
+## 👥 Target Users
+
+### Water Sector Regulators
+- Monitor utility compliance with standards
+- Track performance trends across jurisdictions
+- Identify utilities requiring intervention
+- Benchmark against national and international targets
+
+### County & Regional Governments
+- Assess service delivery gaps by region
+- Compare performance across different areas
+- Inform budget allocation decisions
+- Support policy reforms with data-driven insights
+
+### Policymakers & Development Partners
+- Track progress toward SDG 6 (Clean Water & Sanitation)
+- Identify investment priorities
+- Monitor sector-wide trends
+- Evaluate policy impact
 
 ## 🚀 Quick Start
 
@@ -18,11 +40,33 @@ The dashboard will open in your browser at `http://localhost:8501`
 
 ## 📊 Dashboard Structure
 
-### Main Page (Home)
-- Multi-country overview and comparison
-- Cross-country performance metrics
-- E. Coli pass rate trends
-- Featured insights summary
+### Landing Page (Regulatory Overview)
+
+The landing page answers three critical questions for decision-makers:
+
+#### 1. **WHERE ARE WE?** — Current State
+- 6 high-level KPI cards with sector-wide performance
+- Population served, NRW, water coverage, quality compliance
+- Color-coded performance indicators (🟢 🟡 🔴)
+- Real-time benchmarking against WHO and SDG targets
+
+#### 2. **WHAT NEEDS ATTENTION?** — Actionable Insights
+- Critical gaps alert system
+- High NRW zones requiring leak detection programs
+- Low coverage areas needing infrastructure investment
+- Water quality concerns requiring treatment improvements
+- Specific, prioritized intervention recommendations
+
+#### 3. **HOW ARE WE DOING?** — Progress & Trends
+- Interactive country comparison visualizations
+- Performance across Service, Production, Access, and Finance domains
+- Year-over-year trend analysis with benchmark lines
+- Geographic performance overview with color-coded indicators
+
+**Interactive Filters:**
+- Multi-select country filter
+- Time period slider (2020-2024)
+- Dynamic metric selector (NRW, coverage, quality, etc.)
 
 ### Country Pages (with Advanced Filters)
 
@@ -90,15 +134,33 @@ Each country page includes interactive filters for:
 - Stacked area charts
 
 ### Key Performance Indicators
-- E. Coli pass rates
+
+#### Service Domain
+- Complaint resolution efficiency & response time
+- Customer service quality metrics
+- Service continuity and reliability
+
+#### Production Domain
+- Water supply vs. consumption patterns
+- Non-revenue water (NRW) percentage
+- Production efficiency and capacity utilization
+
+#### Access Domain
+- Water coverage (metered connections %)
+- Sanitation coverage (sewer connections)
+- Public toilet access ratios vs. WHO guidelines
+- Population served estimates
+
+#### Finance Domain (Proxies)
+- NRW as financial loss indicator
+- Service efficiency metrics
+- Operational productivity measures
+
+#### Quality & Compliance
+- E. Coli test pass rates (WHO target: >95%)
 - Chlorine test execution & pass rates
-- Complaint resolution efficiency
-- Resolution time tracking
-- Wastewater capacity utilization
-- Metering coverage
-- Non-revenue water (NRW)
-- Workforce productivity
-- Public toilet access ratios
+- Wastewater treatment coverage
+- Regulatory compliance tracking
 
 ## 🎯 Featured Insights
 
@@ -141,3 +203,32 @@ Each country page includes interactive filters for:
 - **Time Period**: 2020-2024
 - **Records**: 1,080+ monthly observations
 - **Metrics**: 30+ indicators across water quality, customer service, wastewater, and operations
+
+## 📏 Performance Benchmarks
+
+The dashboard uses the following internationally recognized benchmarks:
+
+| Metric | Benchmark | Source | Performance Coding |
+|--------|-----------|--------|-------------------|
+| **E. Coli Pass Rate** | ≥ 95% | WHO | 🟢 ≥95% • 🟡 80-95% • 🔴 <80% |
+| **Non-Revenue Water (NRW)** | ≤ 25% | IWA Best Practice | 🟢 ≤25% • 🟡 25-35% • 🔴 >35% |
+| **Water Coverage** | ≥ 80% | SDG 6 Target | 🟢 ≥80% • 🟡 60-80% • 🔴 <60% |
+| **Chlorine Testing Execution** | ≥ 90% | National Standards | 🟢 ≥90% • 🟡 70-90% • 🔴 <70% |
+| **Wastewater Treatment** | ≥ 80% | SDG 6.3 | 🟢 ≥80% • 🟡 60-80% • 🔴 <60% |
+
+## 🔗 Related Documentation
+
+- **DASHBOARD_FEATURES.md** - Detailed technical documentation of landing page features
+- **service_data.ipynb** - Original data analysis notebook
+
+## 📝 License
+
+This project is open source and available for use by water sector stakeholders, researchers, and development organizations.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit issues or pull requests to improve the dashboard.
+
+## 📧 Contact
+
+For questions about the data, methodology, or dashboard features, please open an issue on the repository.
