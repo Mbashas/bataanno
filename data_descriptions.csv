@@ -1,0 +1,328 @@
+#,Table name,Variables,Frequency,Granularity,Description
+1,production_uganda,date,daily,source,Date
+2,production_uganda,source,daily,source,Extraction source
+3,production_uganda,production_m3,daily,source,Production volume
+4,production_uganda,service_hours,daily,source,Number of hours of service
+5,billing_uganda,date,monthly,customer,Date
+6,billing_uganda,customer_id,monthly,customer,Customer ID
+7,billing_uganda,consumption_m3,monthly,customer,Monthly water consumption per customer
+8,billing_uganda,billed,monthly,customer,Total billed amount per customer per month
+9,billing_uganda,zone,monthly,customer,Zone name 
+10,billing_uganda,source,monthly,customer,Source of water for production
+11,billing_uganda,paid,monthly,customer,Total paid amount per customer per month
+12,w_access_uganda,popn_total,annual,zones,Total population in each zone (in thousands)
+13,w_access_uganda,zone,annual,zones,Administrative zone identifier
+14,w_access_uganda,surface_water,annual,zones,Population percentage using surface water
+15,w_access_uganda,unimproved,annual,zones,Population percentage using unimproved sources
+16,w_access_uganda,limited,annual,zones,Population percentage with limited access
+17,w_access_uganda,basic,annual,zones,Population percentage with basic access
+18,w_access_uganda,safely_managed,annual,zones,Population percentage with safely managed access
+19,w_access_uganda,date,annual,zones,
+20,w_access_uganda,households,annual,zones,
+21,w_access_uganda,municipal_coverage,annual,zones,Population coverage under municipal water supply
+22,s_access_uganda,popn_total,annual,zones,
+23,s_access_uganda,zone,annual,zones,
+24,s_access_uganda,open_def,annual,zones,Population practising open defecation
+25,s_access_uganda,unimproved,annual,zones,
+26,s_access_uganda,limited,annual,zones,
+27,s_access_uganda,basic,annual,zones,
+28,s_access_uganda,safely_managed,annual,zones,
+29,s_access_uganda,date,annual,zones,
+30,s_access_uganda,households,annual,zones,
+31,s_service_uganda,date,monthly,zones,
+32,s_service_uganda,households,annual,zones,
+33,s_service_uganda,sewer_connections,monthly,zones,
+34,s_service_uganda,public_toilets,monthly,zones,public toilets maintained
+35,s_service_uganda,workforce,monthly,zones,sanitation managerial workforce
+36,s_service_uganda,f_workforce,monthly,zones,sanitation female managerial workforce
+37,s_service_uganda,ww_collected,monthly,zones,Volume of wastewater collected monthly per zone
+38,s_service_uganda,ww_treated,monthly,zones,Volume of wastewater treated monthly per zone
+39,s_service_uganda,ww_reused,monthly,zones,Volume of treated wastewater reused monthly per zone
+40,s_service_uganda,w_supplied,monthly,zones,Total volume of water supplied per zone per month
+41,s_service_uganda,hh_emptied,monthly,zones,households with emptied sanitation systems per month
+42,s_service_uganda,fs_treated,monthly,zones,Volume of faecal sludge treated per zone per month
+43,s_service_uganda,fs_reused,monthly,zones,Volume of treated faecal sludge reused per zone per month
+44,w_service_uganda,households,annual,zones,
+45,w_service_uganda,date,monthly,zones,
+46,w_service_uganda,tests_chlorine,monthly,zones,Number of chlorine tests required per month per zone
+47,w_service_uganda,tests_ecoli,monthly,zones,Number of E. coli tests required per month per zone
+48,w_service_uganda,tests_conducted_chlorine,monthly,zones,Number of chlorine tests actually conducted per month
+49,w_service_uganda,test_conducted_ecoli,monthly,zones,Number of E. coli tests actually conducted per month
+50,w_service_uganda,test_passed_chlorine,monthly,zones,Number of chlorine tests that passed per month
+51,w_service_uganda,tests_passed_ecoli,monthly,zones,Number of E. coli tests that passed per month
+52,w_service_uganda,w_supplied,monthly,zones,Total volume of water supplied per zone per month
+53,w_service_uganda,total_consumption,monthly,zones,Total water consumption estimated across all sources per month
+54,w_service_uganda,metered,monthly,zones,water consumption recorded through meters
+55,w_service_uganda,ww_capacity,monthly,zones,Total wastewater treatment capacity per zone per month
+56,w_service_uganda,zone,monthly,zones,
+57,all_fin_service_uganda,date,monthly,city,
+58,all_fin_service_uganda,complaints,monthly,city,Total complaints received monthly at city level
+59,all_fin_service_uganda,resolved,monthly,city,Total complaints resolved monthly at city level
+60,all_fin_service_uganda,sewer_length,annual,city,Total sewer network length (km) maintained per year
+61,all_fin_service_uganda,blocks,monthly,city,Number of sewer blockages reported monthly
+62,all_fin_service_uganda,sewer_billed,monthly,city,Total sewer billing per month (UGX)
+63,all_fin_service_uganda,sewer_revenue,monthly,city,Total sewer revenue collected per month (UGX)
+64,all_fin_service_uganda,opex,monthly,city,Monthly operational expenditure (UGX)
+65,all_fin_service_uganda,san_staff,monthly,city,Number of sanitation staff employed monthly
+66,all_fin_service_uganda,w_staff,monthly,city,Number of water staff employed monthly
+67,all_fin_service_uganda,propoor_popn,monthly,city,Proportion of total population in pro-poor category
+68,all_nationalacc_uganda,date,annual,city,
+69,all_nationalacc_uganda,budget_allocated,annual,city,total allocated budget_WASH
+70,all_nationalacc_uganda,san_allocation,annual,city,% sanitation allocation
+71,all_nationalacc_uganda,wat_allocation,annual,city,% water allocation
+72,all_nationalacc_uganda,staff_cost,annual,city,staff cost - annual HR
+73,all_nationalacc_uganda,water_resources,annual,city,total renewable resources available
+74,all_nationalacc_uganda,trained_staff,annual,city,trained staff
+75,all_nationalacc_uganda,complaint_resolution,annual,city,complaint resolution time
+76,all_nationalacc_uganda,registered_wtps,annual,city,registered water treatment plants
+77,all_nationalacc_uganda,inspected_wtps,annual,city,inspected wtps
+78,all_nationalacc_uganda,total_service_providers,annual,city,private and public service providers
+79,all_nationalacc_uganda,licensed_service_providers,annual,city,licensed service providers
+80,all_nationalacc_uganda,asset_health,annual,city,asset health index
+81,all_nationalacc_uganda,staff_training_budget,annual,city,budget allocated for staff management
+#,Table name,Variables,Frequency,Granularity,Description
+1,production_malawi,date,daily,source,Date
+2,production_malawi,source,daily,source,Extraction source
+3,production_malawi,production_m3,daily,source,Production volume
+4,production_malawi,service_hours,daily,source,Number of hours of service
+5,billing_malawi,date,monthly,customer,Date
+6,billing_malawi,customer_id,monthly,customer,Customer ID
+7,billing_malawi,consumption_m3,monthly,customer,Monthly water consumption per customer
+8,billing_malawi,billed,monthly,customer,Total billed amount per customer per month
+9,billing_malawi,zone,monthly,customer,Zone name 
+10,billing_malawi,source,monthly,customer,Source of water for production
+11,billing_malawi,paid,monthly,customer,Total paid amount per customer per month
+12,w_access_malawi,popn_total,annual,zones,Total population in each zone (in thousands)
+13,w_access_malawi,zone,annual,zones,Administrative zone identifier
+14,w_access_malawi,surface_water,annual,zones,Population percentage using surface water
+15,w_access_malawi,unimproved,annual,zones,Population percentage using unimproved sources
+16,w_access_malawi,limited,annual,zones,Population percentage with limited access
+17,w_access_malawi,basic,annual,zones,Population percentage with basic access
+18,w_access_malawi,safely_managed,annual,zones,Population percentage with safely managed access
+19,w_access_malawi,date,annual,zones,
+20,w_access_malawi,households,annual,zones,
+21,w_access_malawi,municipal_coverage,annual,zones,Population coverage under municipal water supply
+22,s_access_malawi,popn_total,annual,zones,
+23,s_access_malawi,zone,annual,zones,
+24,s_access_malawi,open_def,annual,zones,Population practising open defecation
+25,s_access_malawi,unimproved,annual,zones,
+26,s_access_malawi,limited,annual,zones,
+27,s_access_malawi,basic,annual,zones,
+28,s_access_malawi,safely_managed,annual,zones,
+29,s_access_malawi,date,annual,zones,
+30,s_access_malawi,households,annual,zones,
+31,s_service_malawi,date,monthly,zones,
+32,s_service_malawi,households,annual,zones,
+33,s_service_malawi,sewer_connections,monthly,zones,
+34,s_service_malawi,public_toilets,monthly,zones,public toilets maintained
+35,s_service_malawi,workforce,monthly,zones,sanitation managerial workforce
+36,s_service_malawi,f_workforce,monthly,zones,sanitation female managerial workforce
+37,s_service_malawi,ww_collected,monthly,zones,Volume of wastewater collected monthly per zone
+38,s_service_malawi,ww_treated,monthly,zones,Volume of wastewater treated monthly per zone
+39,s_service_malawi,ww_reused,monthly,zones,Volume of treated wastewater reused monthly per zone
+40,s_service_malawi,w_supplied,monthly,zones,Total volume of water supplied per zone per month
+41,s_service_malawi,hh_emptied,monthly,zones,households with emptied sanitation systems per month
+42,s_service_malawi,fs_treated,monthly,zones,Volume of faecal sludge treated per zone per month
+43,s_service_malawi,fs_reused,monthly,zones,Volume of treated faecal sludge reused per zone per month
+44,w_service_malawi,households,annual,zones,
+45,w_service_malawi,date,monthly,zones,
+46,w_service_malawi,tests_chlorine,monthly,zones,Number of chlorine tests required per month per zone
+47,w_service_malawi,tests_ecoli,monthly,zones,Number of E. coli tests required per month per zone
+48,w_service_malawi,tests_conducted_chlorine,monthly,zones,Number of chlorine tests actually conducted per month
+49,w_service_malawi,test_conducted_ecoli,monthly,zones,Number of E. coli tests actually conducted per month
+50,w_service_malawi,test_passed_chlorine,monthly,zones,Number of chlorine tests that passed per month
+51,w_service_malawi,tests_passed_ecoli,monthly,zones,Number of E. coli tests that passed per month
+52,w_service_malawi,w_supplied,monthly,zones,Total volume of water supplied per zone per month
+53,w_service_malawi,total_consumption,monthly,zones,Total water consumption estimated across all sources per month
+54,w_service_malawi,metered,monthly,zones,water consumption recorded through meters
+55,w_service_malawi,ww_capacity,monthly,zones,Total wastewater treatment capacity per zone per month
+56,w_service_malawi,zone,monthly,zones,
+57,all_fin_service_malawi,date,monthly,city,
+58,all_fin_service_malawi,complaints,monthly,city,Total complaints received monthly at city level
+59,all_fin_service_malawi,resolved,monthly,city,Total complaints resolved monthly at city level
+60,all_fin_service_malawi,sewer_length,annual,city,Total sewer network length (km) maintained per year
+61,all_fin_service_malawi,blocks,monthly,city,Number of sewer blockages reported monthly
+62,all_fin_service_malawi,sewer_billed,monthly,city,Total sewer billing per month (UGX)
+63,all_fin_service_malawi,sewer_revenue,monthly,city,Total sewer revenue collected per month (UGX)
+64,all_fin_service_malawi,opex,monthly,city,Monthly operational expenditure (UGX)
+65,all_fin_service_malawi,san_staff,monthly,city,Number of sanitation staff employed monthly
+66,all_fin_service_malawi,w_staff,monthly,city,Number of water staff employed monthly
+67,all_fin_service_malawi,propoor_popn,monthly,city,Proportion of total population in pro-poor category
+68,all_nationalacc_malawi,date,annual,city,
+69,all_nationalacc_malawi,budget_allocated,annual,city,total allocated budget_WASH
+70,all_nationalacc_malawi,san_allocation,annual,city,% sanitation allocation
+71,all_nationalacc_malawi,wat_allocation,annual,city,% water allocation
+72,all_nationalacc_malawi,staff_cost,annual,city,staff cost - annual HR
+73,all_nationalacc_malawi,water_resources,annual,city,total renewable resources available
+74,all_nationalacc_malawi,trained_staff,annual,city,trained staff
+75,all_nationalacc_malawi,complaint_resolution,annual,city,complaint resolution time
+76,all_nationalacc_malawi,registered_wtps,annual,city,registered water treatment plants
+77,all_nationalacc_malawi,inspected_wtps,annual,city,inspected wtps
+78,all_nationalacc_malawi,total_service_providers,annual,city,private and public service providers
+79,all_nationalacc_malawi,licensed_service_providers,annual,city,licensed service providers
+80,all_nationalacc_malawi,asset_health,annual,city,asset health index
+81,all_nationalacc_malawi,staff_training_budget,annual,city,budget allocated for staff management
+#,Table name,Variables,Frequency,Granularity,Description
+1,production_lesotho,date,daily,source,Date
+2,production_lesotho,source,daily,source,Extraction source
+3,production_lesotho,production_m3,daily,source,Production volume
+4,production_lesotho,service_hours,daily,source,Number of hours of service
+5,billing_lesotho,date,monthly,customer,Date
+6,billing_lesotho,customer_id,monthly,customer,Customer ID
+7,billing_lesotho,consumption_m3,monthly,customer,Monthly water consumption per customer
+8,billing_lesotho,billed,monthly,customer,Total billed amount per customer per month
+9,billing_lesotho,zone,monthly,customer,Zone name 
+10,billing_lesotho,source,monthly,customer,Source of water for production
+11,billing_lesotho,paid,monthly,customer,Total paid amount per customer per month
+12,w_access_lesotho,popn_total,annual,zones,Total population in each zone (in thousands)
+13,w_access_lesotho,zone,annual,zones,Administrative zone identifier
+14,w_access_lesotho,surface_water,annual,zones,Population percentage using surface water
+15,w_access_lesotho,unimproved,annual,zones,Population percentage using unimproved sources
+16,w_access_lesotho,limited,annual,zones,Population percentage with limited access
+17,w_access_lesotho,basic,annual,zones,Population percentage with basic access
+18,w_access_lesotho,safely_managed,annual,zones,Population percentage with safely managed access
+19,w_access_lesotho,date,annual,zones,
+20,w_access_lesotho,households,annual,zones,
+21,w_access_lesotho,municipal_coverage,annual,zones,Population coverage under municipal water supply
+22,s_access_lesotho,popn_total,annual,zones,
+23,s_access_lesotho,zone,annual,zones,
+24,s_access_lesotho,open_def,annual,zones,Population practising open defecation
+25,s_access_lesotho,unimproved,annual,zones,
+26,s_access_lesotho,limited,annual,zones,
+27,s_access_lesotho,basic,annual,zones,
+28,s_access_lesotho,safely_managed,annual,zones,
+29,s_access_lesotho,date,annual,zones,
+30,s_access_lesotho,households,annual,zones,
+31,s_service_lesotho,date,monthly,zones,
+32,s_service_lesotho,households,annual,zones,
+33,s_service_lesotho,sewer_connections,monthly,zones,
+34,s_service_lesotho,public_toilets,monthly,zones,public toilets maintained
+35,s_service_lesotho,workforce,monthly,zones,sanitation managerial workforce
+36,s_service_lesotho,f_workforce,monthly,zones,sanitation female managerial workforce
+37,s_service_lesotho,ww_collected,monthly,zones,Volume of wastewater collected monthly per zone
+38,s_service_lesotho,ww_treated,monthly,zones,Volume of wastewater treated monthly per zone
+39,s_service_lesotho,ww_reused,monthly,zones,Volume of treated wastewater reused monthly per zone
+40,s_service_lesotho,w_supplied,monthly,zones,Total volume of water supplied per zone per month
+41,s_service_lesotho,hh_emptied,monthly,zones,households with emptied sanitation systems per month
+42,s_service_lesotho,fs_treated,monthly,zones,Volume of faecal sludge treated per zone per month
+43,s_service_lesotho,fs_reused,monthly,zones,Volume of treated faecal sludge reused per zone per month
+44,w_service_lesotho,households,annual,zones,
+45,w_service_lesotho,date,monthly,zones,
+46,w_service_lesotho,tests_chlorine,monthly,zones,Number of chlorine tests required per month per zone
+47,w_service_lesotho,tests_ecoli,monthly,zones,Number of E. coli tests required per month per zone
+48,w_service_lesotho,tests_conducted_chlorine,monthly,zones,Number of chlorine tests actually conducted per month
+49,w_service_lesotho,test_conducted_ecoli,monthly,zones,Number of E. coli tests actually conducted per month
+50,w_service_lesotho,test_passed_chlorine,monthly,zones,Number of chlorine tests that passed per month
+51,w_service_lesotho,tests_passed_ecoli,monthly,zones,Number of E. coli tests that passed per month
+52,w_service_lesotho,w_supplied,monthly,zones,Total volume of water supplied per zone per month
+53,w_service_lesotho,total_consumption,monthly,zones,Total water consumption estimated across all sources per month
+54,w_service_lesotho,metered,monthly,zones,water consumption recorded through meters
+55,w_service_lesotho,ww_capacity,monthly,zones,Total wastewater treatment capacity per zone per month
+56,w_service_lesotho,zone,monthly,zones,
+57,all_fin_service_lesotho,date,monthly,city,
+58,all_fin_service_lesotho,complaints,monthly,city,Total complaints received monthly at city level
+59,all_fin_service_lesotho,resolved,monthly,city,Total complaints resolved monthly at city level
+60,all_fin_service_lesotho,sewer_length,annual,city,Total sewer network length (km) maintained per year
+61,all_fin_service_lesotho,blocks,monthly,city,Number of sewer blockages reported monthly
+62,all_fin_service_lesotho,sewer_billed,monthly,city,Total sewer billing per month (UGX)
+63,all_fin_service_lesotho,sewer_revenue,monthly,city,Total sewer revenue collected per month (UGX)
+64,all_fin_service_lesotho,opex,monthly,city,Monthly operational expenditure (UGX)
+65,all_fin_service_lesotho,san_staff,monthly,city,Number of sanitation staff employed monthly
+66,all_fin_service_lesotho,w_staff,monthly,city,Number of water staff employed monthly
+67,all_fin_service_lesotho,propoor_popn,monthly,city,Proportion of total population in pro-poor category
+68,all_nationalacc_lesotho,date,annual,city,
+69,all_nationalacc_lesotho,budget_allocated,annual,city,total allocated budget_WASH
+70,all_nationalacc_lesotho,san_allocation,annual,city,% sanitation allocation
+71,all_nationalacc_lesotho,wat_allocation,annual,city,% water allocation
+72,all_nationalacc_lesotho,staff_cost,annual,city,staff cost - annual HR
+73,all_nationalacc_lesotho,water_resources,annual,city,total renewable resources available
+74,all_nationalacc_lesotho,trained_staff,annual,city,trained staff
+75,all_nationalacc_lesotho,complaint_resolution,annual,city,complaint resolution time
+76,all_nationalacc_lesotho,registered_wtps,annual,city,registered water treatment plants
+77,all_nationalacc_lesotho,inspected_wtps,annual,city,inspected wtps
+78,all_nationalacc_lesotho,total_service_providers,annual,city,private and public service providers
+79,all_nationalacc_lesotho,licensed_service_providers,annual,city,licensed service providers
+80,all_nationalacc_lesotho,asset_health,annual,city,asset health index
+81,all_nationalacc_lesotho,staff_training_budget,annual,city,budget allocated for staff management
+#,Table name,Variables,Frequency,Granularity,Description
+1,production_cameroon,date,daily,source,Date
+2,production_cameroon,source,daily,source,Extraction source
+3,production_cameroon,production_m3,daily,source,Production volume
+4,production_cameroon,service_hours,daily,source,Number of hours of service
+5,billing_cameroon,date,monthly,customer,Date
+6,billing_cameroon,customer_id,monthly,customer,Customer ID
+7,billing_cameroon,consumption_m3,monthly,customer,Monthly water consumption per customer (would be same as what was billed)
+8,billing_cameroon,billed,monthly,customer,Total billed amount per customer per month
+9,billing_cameroon,zone,monthly,customer,Zone name 
+10,billing_cameroon,source,monthly,customer,Source of water for production
+11,billing_cameroon,paid,monthly,customer,Total paid amount per customer per month
+12,w_access_cameroon,popn_total,annual,zones,Total population in each zone (in thousands)
+13,w_access_cameroon,zone,annual,zones,Administrative zone identifier
+14,w_access_cameroon,surface_water,annual,zones,Population percentage using surface water
+15,w_access_cameroon,unimproved,annual,zones,Population percentage using unimproved sources
+16,w_access_cameroon,limited,annual,zones,Population percentage with limited access
+17,w_access_cameroon,basic,annual,zones,Population percentage with basic access
+18,w_access_cameroon,safely_managed,annual,zones,Population percentage with safely managed access
+19,w_access_cameroon,date,annual,zones,
+20,w_access_cameroon,households,annual,zones,
+21,w_access_cameroon,municipal_coverage,annual,zones,Population coverage under municipal water supply
+22,s_access_cameroon,popn_total,annual,zones,
+23,s_access_cameroon,zone,annual,zones,
+24,s_access_cameroon,open_def,annual,zones,Population practising open defecation
+25,s_access_cameroon,unimproved,annual,zones,
+26,s_access_cameroon,limited,annual,zones,
+27,s_access_cameroon,basic,annual,zones,
+28,s_access_cameroon,safely_managed,annual,zones,
+29,s_access_cameroon,date,annual,zones,
+30,s_access_cameroon,households,annual,zones,
+31,s_service_cameroon,date,monthly,zones,
+32,s_service_cameroon,households,annual,zones,
+33,s_service_cameroon,sewer_connections,monthly,zones,
+34,s_service_cameroon,public_toilets,monthly,zones,public toilets maintained
+35,s_service_cameroon,workforce,monthly,zones,sanitation managerial workforce
+36,s_service_cameroon,f_workforce,monthly,zones,sanitation female managerial workforce
+37,s_service_cameroon,ww_collected,monthly,zones,Volume of wastewater collected monthly per zone
+38,s_service_cameroon,ww_treated,monthly,zones,Volume of wastewater treated monthly per zone
+39,s_service_cameroon,ww_reused,monthly,zones,Volume of treated wastewater reused monthly per zone
+40,s_service_cameroon,w_supplied,monthly,zones,Total volume of water supplied per zone per month
+41,s_service_cameroon,hh_emptied,monthly,zones,households with emptied sanitation systems per month
+42,s_service_cameroon,fs_treated,monthly,zones,Volume of faecal sludge treated per zone per month
+43,s_service_cameroon,fs_reused,monthly,zones,Volume of treated faecal sludge reused per zone per month
+44,w_service_cameroon,households,annual,zones,
+45,w_service_cameroon,date,monthly,zones,
+46,w_service_cameroon,tests_chlorine,monthly,zones,Number of chlorine tests required per month per zone
+47,w_service_cameroon,tests_ecoli,monthly,zones,Number of E. coli tests required per month per zone
+48,w_service_cameroon,tests_conducted_chlorine,monthly,zones,Number of chlorine tests actually conducted per month
+49,w_service_cameroon,test_conducted_ecoli,monthly,zones,Number of E. coli tests actually conducted per month
+50,w_service_cameroon,test_passed_chlorine,monthly,zones,Number of chlorine tests that passed per month
+51,w_service_cameroon,tests_passed_ecoli,monthly,zones,Number of E. coli tests that passed per month
+52,w_service_cameroon,w_supplied,monthly,zones,Total volume of water supplied per zone per month
+53,w_service_cameroon,total_consumption,monthly,zones,Total water consumption estimated across all sources per month
+54,w_service_cameroon,metered,monthly,zones,water consumption recorded through meters
+55,w_service_cameroon,ww_capacity,monthly,zones,Total wastewater treatment capacity per zone per month
+56,w_service_cameroon,zone,monthly,zones,
+57,all_fin_service_cameroon,date,monthly,city,
+58,all_fin_service_cameroon,complaints,monthly,city,Total complaints received monthly at city level
+59,all_fin_service_cameroon,resolved,monthly,city,Total complaints resolved monthly at city level
+60,all_fin_service_cameroon,sewer_length,annual,city,Total sewer network length (km) maintained per year
+61,all_fin_service_cameroon,blocks,monthly,city,Number of sewer blockages reported monthly
+62,all_fin_service_cameroon,sewer_billed,monthly,city,Total sewer billing per month (UGX)
+63,all_fin_service_cameroon,sewer_revenue,monthly,city,Total sewer revenue collected per month (UGX)
+64,all_fin_service_cameroon,opex,monthly,city,Monthly operational expenditure (UGX)
+65,all_fin_service_cameroon,san_staff,monthly,city,Number of sanitation staff employed monthly
+66,all_fin_service_cameroon,w_staff,monthly,city,Number of water staff employed monthly
+67,all_fin_service_cameroon,propoor_popn,monthly,city,Proportion of total population in pro-poor category
+68,all_nationalacc_cameroon,date,annual,city,
+69,all_nationalacc_cameroon,budget_allocated,annual,city,total allocated budget_WASH
+70,all_nationalacc_cameroon,san_allocation,annual,city,% sanitation allocation
+71,all_nationalacc_cameroon,wat_allocation,annual,city,% water allocation
+72,all_nationalacc_cameroon,staff_cost,annual,city,staff cost - annual HR
+73,all_nationalacc_cameroon,water_resources,annual,city,total renewable resources available
+74,all_nationalacc_cameroon,trained_staff,annual,city,trained staff
+75,all_nationalacc_cameroon,complaint_resolution,annual,city,complaint resolution time
+76,all_nationalacc_cameroon,registered_wtps,annual,city,registered water treatment plants
+77,all_nationalacc_cameroon,inspected_wtps,annual,city,inspected wtps
+78,all_nationalacc_cameroon,total_service_providers,annual,city,private and public service providers
+79,all_nationalacc_cameroon,licensed_service_providers,annual,city,licensed service providers
+80,all_nationalacc_cameroon,asset_health,annual,city,asset health index
+81,all_nationalacc_cameroon,staff_training_budget,annual,city,budget allocated for staff management
