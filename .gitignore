@@ -34,8 +34,8 @@ ENV/
 *~
 .DS_Store
 
-# Streamlit
-.streamlit/
+# Streamlit config (keeping for theme settings)
+# .streamlit/
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -58,4 +58,19 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.bak
+
+# Documentation - Keep only essential docs
+# Keep: README.md, QUICKSTART.md, PROJECT_SUMMARY.md
+BUGFIX_SUMMARY.md
+COLOR_SCHEME_GUIDE.md
+CONTRAST_FIX.md
+FINAL_FIXES_SUMMARY.md
+HIGH_CONTRAST_THEME_FIX.md
+PDF_REPORT_ENHANCEMENTS.md
+THEME_QUICK_REFERENCE.md
+UI_FIXES_SUMMARY.md
+
+# Generated PDF reports
+*.pdf
+water_services_performance_report.pdf
 

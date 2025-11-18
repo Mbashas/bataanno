@@ -1,0 +1,12 @@
+[theme]
+# Light theme with high contrast for maximum readability
+primaryColor = "#1C6BA0"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F8F9FA"
+textColor = "#1E1E1E"
+font = "sans serif"
+
+[server]
+headless = true
+port = 8501
+
