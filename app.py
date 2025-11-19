@@ -296,6 +296,8 @@ def initialize_session_state():
         st.session_state.current_page = 'home'
     if 'data_loaded' not in st.session_state:
         st.session_state.data_loaded = False
+    if 'selected_country' not in st.session_state:
+        st.session_state.selected_country = None
 
 
 def load_data_cached():
@@ -308,8 +310,16 @@ def load_data_cached():
     return st.session_state.data
 
 
-def render_sidebar(raw_data):
-    """Render sidebar with navigation and filters"""
+def get_zones_for_country(country, data):
+    """Get available zones for a given country"""
+    if 'w_service' in data and len(data['w_service']) > 0:
+        country_data = data['w_service'][data['w_service']['country'] == country]
+        return sorted(country_data['zone'].unique().tolist())
+    return []
+
+
+def render_sidebar_landing():
+    """Render minimal sidebar for landing page (no navigation)"""
     with st.sidebar:
         # Dashboard branding
         st.markdown("""
@@ -319,41 +329,63 @@ def render_sidebar(raw_data):
         </div>
         """, unsafe_allow_html=True)
         
-        st.title("Navigation")
+        st.info("👆 Select a country above to explore the dashboard")
         
-        # Page navigation
-        page_options = {
-            '🏠 Home': 'home',
-            '📊 Overview Dashboard': 'overview',
-            '🏭 Production Domain': 'production',
-            '🚰 Service Domain': 'service',
-            '🌍 Access Domain': 'access',
-            '💰 Finance Domain': 'finance',
-            '📋 Reports': 'reports'
-        }
+        # About section
+        with st.expander("ℹ️ About"):
+            st.markdown("""
+            ### Water Services Dashboard
+            
+            **Version:** 2.0.0  
+            **Last Updated:** November 2024
+            
+            This dashboard provides comprehensive insights into water and sanitation 
+            services across Uganda, Cameroon, Lesotho, and Malawi.
+            
+            **Data Sources:**
+            - Production records
+            - Service delivery data
+            - Access statistics (JMP)
+            - Financial reports
+            - National accounts
+            
+            **Support:** dashboard@washservices.org
+            """)
+
+
+def render_sidebar_country_dashboard(raw_data, selected_country):
+    """Render sidebar for country dashboard with zone filters"""
+    with st.sidebar:
+        # Dashboard branding
+        st.markdown("""
+        <div style="text-align: center; padding: 20px 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; margin-bottom: 20px;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">🌊 WASH Dashboard</h1>
+            <p style="color: rgba(255,255,255,0.8); margin: 5px 0 0 0; font-size: 12px;">Multi-Country Water Services</p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # Radio button navigation
-        selected_page = st.radio(
-            "Select Page:",
-            list(page_options.keys()),
-            index=list(page_options.values()).index(st.session_state.current_page)
-        )
+        # Back to Home button
+        if st.button("← Back to Home", use_container_width=True):
+            st.session_state.selected_country = None
+            st.rerun()
         
-        # Update current page
-        st.session_state.current_page = page_options[selected_page]
+        st.markdown("---")
+        
+        # Country indicator
+        st.header(f"📍 {selected_country}")
         
         st.markdown("---")
         
         # Filters Section
         st.header("🔍 Filters")
         
-        # Country filter
-        available_countries = get_available_countries()
-        countries_filter = st.multiselect(
-            "Select Countries:",
-            available_countries,
-            default=available_countries,
-            help="Filter data by selected countries"
+        # Zone filter (dynamically populated based on selected country)
+        available_zones = get_zones_for_country(selected_country, raw_data)
+        zones_filter = st.multiselect(
+            "Select Zones:",
+            available_zones,
+            default=available_zones,
+            help="Filter data by selected zones"
         )
         
         # Date range filter
@@ -377,11 +409,19 @@ def render_sidebar(raw_data):
         
         st.markdown("---")
         
+        # Reports link
+        if st.button("📋 Generate Reports", use_container_width=True):
+            st.session_state.show_reports = True
+            st.rerun()
+        
+        st.markdown("---")
+        
         # Quick Stats
         st.header("📊 Quick Stats")
         filtered_data = apply_filters(
             raw_data,
-            countries=countries_filter,
+            countries=[selected_country],
+            zones=zones_filter,
             date_range=date_range
         )
 
@@ -404,31 +444,10 @@ def render_sidebar(raw_data):
         
         st.markdown("---")
         
-        # About section
-        with st.expander("ℹ️ About"):
-            st.markdown("""
-            ### Water Services Dashboard
-            
-            **Version:** 1.0.0  
-            **Last Updated:** November 2024
-            
-            This dashboard provides comprehensive insights into water and sanitation 
-            services across Uganda, Cameroon, Lesotho, and Malawi.
-            
-            **Data Sources:**
-            - Production records
-            - Service delivery data
-            - Access statistics (JMP)
-            - Financial reports
-            - National accounts
-            
-            **Support:** dashboard@washservices.org
-            """)
-        
         # Data refresh info
         st.caption("Data refreshes automatically every hour")
         
-        return countries_filter, date_range, filtered_data
+        return zones_filter, date_range, filtered_data
 
 
 def render_current_page(data, countries_filter, date_range):
@@ -451,6 +470,45 @@ def render_current_page(data, countries_filter, date_range):
         reports.render_reports_page(data, countries_filter, date_range)
     else:
         st.error(f"Page '{current_page}' not found!")
+
+
+def render_country_dashboard(data, selected_country, zones_filter, date_range):
+    """Render country dashboard with tabs for different domains"""
+    
+    # Check if reports should be shown
+    if st.session_state.get('show_reports', False):
+        st.session_state.show_reports = False
+        reports.render_reports_page(data, [selected_country], date_range)
+        return
+    
+    # Dashboard header
+    st.title(f"🌊 {selected_country} Water Services Dashboard")
+    st.markdown(f"Comprehensive performance metrics across all service domains")
+    st.markdown("---")
+    
+    # Create tabs for different domains
+    tab_overview, tab_production, tab_service, tab_access, tab_finance = st.tabs([
+        "📊 Overview",
+        "🏭 Production",
+        "🚰 Service",
+        "🌍 Access",
+        "💰 Finance"
+    ])
+    
+    with tab_overview:
+        overview.render_overview_page(data, [selected_country], date_range)
+    
+    with tab_production:
+        production.render_production_page(data, [selected_country], date_range)
+    
+    with tab_service:
+        service.render_service_page(data, [selected_country], date_range)
+    
+    with tab_access:
+        access.render_access_page(data, [selected_country], date_range)
+    
+    with tab_finance:
+        finance.render_finance_page(data, [selected_country], date_range)
 
 
 def main():
@@ -480,11 +538,17 @@ def main():
         """)
         st.stop()
     
-    # Render sidebar and get filters
-    countries_filter, date_range, filtered_data = render_sidebar(data)
+    # Check if a country is selected
+    selected_country = st.session_state.selected_country
     
-    # Render current page
-    render_current_page(filtered_data, countries_filter, date_range)
+    if selected_country is None:
+        # Landing Page Mode: Show home page with country cards
+        render_sidebar_landing()
+        home.render_home_page(data, None, None)
+    else:
+        # Country Dashboard Mode: Show tabs with zone filtering
+        zones_filter, date_range, filtered_data = render_sidebar_country_dashboard(data, selected_country)
+        render_country_dashboard(filtered_data, selected_country, zones_filter, date_range)
 
 
 if __name__ == "__main__":

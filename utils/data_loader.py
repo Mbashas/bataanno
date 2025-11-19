@@ -160,17 +160,22 @@ def load_all_data():
     }
 
 
-def apply_filters(data, countries=None, date_range=None):
+def apply_filters(data, countries=None, zones=None, date_range=None):
     """
-    Apply country and date filters across all domain datasets.
+    Apply country, zone, and date filters across all domain datasets.
 
     Args:
         data (dict): Dictionary of dataframes keyed by domain name.
         countries (list[str] | None): Countries to include.
+        zones (list[str] | None): Zones to include (for zone-based datasets).
         date_range (tuple | list | None): (start_date, end_date) bounds.
 
     Returns:
         dict: Filtered dataframes keyed by domain name.
+        
+    Note:
+        Production data uses 'source' field, not 'zone', so zone filters are not applied to it.
+        Only country and date filters are applied to production data.
     """
     if not data:
         return {}
@@ -188,9 +193,16 @@ def apply_filters(data, countries=None, date_range=None):
 
         temp_df = df.copy()
 
+        # Apply country filter
         if countries and 'country' in temp_df.columns:
             temp_df = temp_df[temp_df['country'].isin(countries)]
 
+        # Apply zone filter (but NOT to production data which uses 'source' instead)
+        # Production data should only be filtered by country and date
+        if zones and 'zone' in temp_df.columns and name != 'production':
+            temp_df = temp_df[temp_df['zone'].isin(zones)]
+
+        # Apply date range filter
         if start_date is not None and end_date is not None and 'date' in temp_df.columns:
             temp_df = temp_df[
                 (temp_df['date'] >= start_date) &

@@ -11,7 +11,7 @@ from utils.visualizations import COLORS
 
 
 def render_home_page(data, countries_filter, date_range=None):
-    """Render the home/landing page"""
+    """Render the home/landing page with country selection cards"""
     
     st.title("🌊 Multi-Country Water Services Performance Dashboard")
     
@@ -26,13 +26,67 @@ def render_home_page(data, countries_filter, date_range=None):
     
     st.markdown("---")
     
-    # Summary KPIs
-    st.header("📊 Key Performance Indicators")
+    # Country Selection Section
+    st.header("🌍 Select a Country to Explore")
+    st.markdown("Choose a country below to view its comprehensive water services dashboard:")
+    
+    # Country configuration with flag emojis and descriptions
+    countries_config = [
+        {
+            'name': 'Uganda',
+            'emoji': '🇺🇬',
+            'description': 'National Water and Sewerage Corporation (NWSC)',
+            'zones': 'Central, Kawempe, Nakawa, Rubaga',
+            'color': '#FFD700'
+        },
+        {
+            'name': 'Malawi',
+            'emoji': '🇲🇼',
+            'description': 'Lilongwe Water Board (LWB)',
+            'zones': 'Capital Hill, Kanengo, Lumbadzi, Old Town',
+            'color': '#FF6347'
+        },
+        {
+            'name': 'Lesotho',
+            'emoji': '🇱🇸',
+            'description': 'Water and Sewerage Company (WASCO)',
+            'zones': 'Maseru Urban, Maseru Rural, Rural Hinterland',
+            'color': '#4682B4'
+        },
+        {
+            'name': 'Cameroon',
+            'emoji': '🇨🇲',
+            'description': 'Camerounaise Des Eaux (CDE)',
+            'zones': 'Yaounde 1-7',
+            'color': '#32CD32'
+        }
+    ]
+    
+    # Display country cards in 2x2 grid
+    col1, col2 = st.columns(2)
+    
+    for idx, country_info in enumerate(countries_config):
+        col = col1 if idx % 2 == 0 else col2
+        
+        with col:
+            render_country_card(
+                country_info['name'],
+                country_info['emoji'],
+                country_info['description'],
+                country_info['zones'],
+                country_info['color']
+            )
+    
+    st.markdown("---")
+    
+    # Overall Statistics Summary
+    st.header("📊 Multi-Country Overview")
+    st.markdown("Key performance indicators across all four countries:")
     
     kpis = calculate_summary_kpis(data)
 
     if not kpis:
-        st.warning("No data available for the selected filters. Please adjust your filters to view KPIs.")
+        st.warning("No data available. Please check data files.")
         return
 
     kpi_layout = [
@@ -72,68 +126,16 @@ def render_home_page(data, countries_filter, date_range=None):
     
     st.markdown("---")
     
-    # Navigation Cards
-    st.header("🧭 Navigate to Domain")
-    st.markdown("Select a domain below to explore detailed insights:")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        render_nav_card(
-            "📊 Overview Dashboard",
-            "High-level KPI scorecard with trends and benchmarks",
-            "overview",
-            "🔍 View Overview"
-        )
-        
-        render_nav_card(
-            "🏭 Production Domain",
-            "Operational efficiency of water production",
-            "production",
-            "⚙️ View Production"
-        )
-    
-    with col2:
-        render_nav_card(
-            "🚰 Service Domain",
-            "Service quality and reliability metrics",
-            "service",
-            "🔧 View Service"
-        )
-        
-        render_nav_card(
-            "🌍 Access Domain",
-            "Access & equity analysis (urban vs rural)",
-            "access",
-            "🗺️ View Access"
-        )
-    
-    with col3:
-        render_nav_card(
-            "💰 Finance Domain",
-            "Financial sustainability and cost recovery",
-            "finance",
-            "💵 View Finance"
-        )
-        
-        render_nav_card(
-            "📊 Reports",
-            "Actionable recommendations and exports",
-            "reports",
-            "📄 View Reports"
-        )
-    
-    st.markdown("---")
-    
     # How to Use Guide
     with st.expander("📖 How to Use This Dashboard"):
         st.markdown("""
         ### Getting Started
         
-        1. **Filter Data**: Use the sidebar to select countries and date ranges
-        2. **Navigate**: Click on domain cards above or use the sidebar menu
-        3. **Explore Visuals**: Hover over charts for detailed information
-        4. **Export Data**: Visit the Reports page to download insights
+        1. **Select a Country**: Click "View Dashboard" on any country card above
+        2. **Explore Domains**: Use tabs to navigate between Overview, Production, Service, Access, and Finance
+        3. **Filter by Zone**: Use the sidebar to select specific zones within the country
+        4. **Adjust Date Range**: Filter data by selecting a date range in the sidebar
+        5. **Generate Reports**: Click the "Generate Reports" button in the sidebar for actionable insights
         
         ### Dashboard Domains
         
@@ -142,7 +144,6 @@ def render_home_page(data, countries_filter, date_range=None):
         - **Service**: Monitor water quality, complaints, and service reliability
         - **Access**: Track JMP service ladder coverage and equity gaps
         - **Finance**: Evaluate OCCR, revenue collection, and cost recovery
-        - **Reports**: Generate action plans and export data
         
         ### Key Performance Indicators
         
@@ -172,6 +173,28 @@ def render_home_page(data, countries_filter, date_range=None):
     st.caption(f"📅 Data Last Updated: {get_latest_update_date()} | 🔄 Dashboard refreshes every hour")
 
 
+def render_country_card(country_name, emoji, description, zones, color):
+    """Render a country selection card with View Dashboard button"""
+    st.markdown(f"""
+    <div style="
+        background: linear-gradient(135deg, {color}20 0%, {color}40 100%);
+        border-left: 5px solid {color};
+        padding: 25px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    ">
+        <h2 style="margin: 0 0 10px 0; color: #1e1e1e; font-size: 32px;">{emoji} {country_name}</h2>
+        <p style="margin: 0 0 10px 0; font-size: 16px; color: #333; font-weight: 500;">{description}</p>
+        <p style="margin: 0; font-size: 13px; color: #666;"><strong>Zones:</strong> {zones}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button(f"🔍 View {country_name} Dashboard", key=f"country_{country_name}", use_container_width=True):
+        st.session_state.selected_country = country_name
+        st.rerun()
+
+
 def render_kpi_card(title, value, target, color):
     """Render a KPI metric card"""
     st.markdown(f"""
@@ -190,7 +213,7 @@ def render_kpi_card(title, value, target, color):
 
 
 def render_nav_card(title, description, page_key, button_text):
-    """Render a navigation card"""
+    """Render a navigation card (deprecated in new flow but kept for compatibility)"""
     st.markdown(f"""
     <div style="
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -204,7 +227,7 @@ def render_nav_card(title, description, page_key, button_text):
     </div>
     """, unsafe_allow_html=True)
     
-    if st.button(button_text, key=f"nav_{page_key}", width='stretch'):
+    if st.button(button_text, key=f"nav_{page_key}", use_container_width=True):
         st.session_state.current_page = page_key
         st.rerun()
 
