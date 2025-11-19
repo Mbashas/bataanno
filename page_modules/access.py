@@ -5,6 +5,7 @@ Access & equity analysis (urban vs rural)
 
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from utils.visualizations import create_stacked_area, create_treemap, COLORS
@@ -236,7 +237,12 @@ def render_access_page(data, countries_filter, date_range=None):
         'municipal_coverage': 'sum',
         'popn_total': 'sum'
     }).reset_index()
-    urban_rural['municipal_pct'] = (urban_rural['municipal_coverage'] / urban_rural['popn_total'] * 100)
+    # Safe division with zero-check
+    urban_rural['municipal_pct'] = np.where(
+        urban_rural['popn_total'] != 0,
+        (urban_rural['municipal_coverage'] / urban_rural['popn_total'] * 100),
+        0
+    )
     urban_rural['rural_pct'] = 100 - urban_rural['municipal_pct']
     
     col1, col2 = st.columns(2)

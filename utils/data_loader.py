@@ -4,6 +4,7 @@ Handles loading all CSV files and preparing data for analysis
 """
 
 import pandas as pd
+import numpy as np
 import streamlit as st
 from pathlib import Path
 from datetime import datetime
@@ -107,8 +108,46 @@ def load_national_data():
     return df
 
 
+@st.cache_data(ttl=3600)
+def load_billing_data():
+    """Load and preprocess customer billing data (monthly, by customer)"""
+    # Load with low_memory=False to handle mixed types in large file
+    df = pd.read_csv(DATA_DIR / "billing.csv", low_memory=False)
+    
+    # Parse dates - handle multiple formats (Uganda uses DD-MM-YYYY, others use YYYY-MM-DD)
+    # Store original date strings before parsing
+    original_dates = df['date'].copy()
+    
+    # First try the standard format
+    df['date'] = pd.to_datetime(df['date'], format='%Y-%m-%d', errors='coerce')
+    
+    # For rows that failed to parse (Uganda data), try the alternative format
+    failed_mask = df['date'].isna()
+    if failed_mask.any():
+        df.loc[failed_mask, 'date'] = pd.to_datetime(
+            original_dates[failed_mask], 
+            format='%d-%m-%Y', 
+            errors='coerce'
+        )
+    
+    df['year'] = df['date'].dt.year
+    df['month'] = df['date'].dt.month
+    df['country'] = df['country'].str.strip().str.title()
+    
+    # Ensure numeric columns are properly typed
+    df['billed'] = pd.to_numeric(df['billed'], errors='coerce')
+    df['paid'] = pd.to_numeric(df['paid'], errors='coerce')
+    df['consumption_m3'] = pd.to_numeric(df['consumption_m3'], errors='coerce')
+    
+    # Add calculated fields for convenience (with zero-division protection)
+    df['payment_ratio'] = np.where(df['billed'] != 0, df['paid'] / df['billed'], 0)
+    df['unpaid_amount'] = df['billed'] - df['paid']
+    
+    return df
+
+
 def load_all_data():
-    """Load all datasets at once"""
+    """Load all datasets at once (8 datasets including billing.csv)"""
     return {
         'production': load_production_data(),
         'w_service': load_w_service_data(),
@@ -116,7 +155,8 @@ def load_all_data():
         'w_access': load_w_access_data(),
         's_access': load_s_access_data(),
         'finance': load_finance_data(),
-        'national': load_national_data()
+        'national': load_national_data(),
+        'billing': load_billing_data()
     }
 
 

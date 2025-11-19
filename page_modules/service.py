@@ -156,9 +156,12 @@ def render_service_page(data, countries_filter, date_range=None):
             row_countries = countries_available[i:i + 4]
             row_cols = st.columns(len(row_countries))
             for idx, country in enumerate(row_countries):
-                compliance = chlorine_by_country.loc[
+                # Safe iloc with empty check
+                compliance_series = chlorine_by_country.loc[
                     chlorine_by_country['country'] == country, 'compliance_rate'
-                ].fillna(0).iloc[0]
+                ].fillna(0)
+                compliance = compliance_series.iloc[0] if len(compliance_series) > 0 else 0
+                
                 fig = create_kpi_card(
                     f"{country} - Chlorine",
                     compliance,
@@ -174,9 +177,12 @@ def render_service_page(data, countries_filter, date_range=None):
             row_countries = countries_available[i:i + 4]
             row_cols = st.columns(len(row_countries))
             for idx, country in enumerate(row_countries):
-                compliance = ecoli_by_country.loc[
+                # Safe iloc with empty check
+                compliance_series = ecoli_by_country.loc[
                     ecoli_by_country['country'] == country, 'compliance_rate'
-                ].fillna(0).iloc[0]
+                ].fillna(0)
+                compliance = compliance_series.iloc[0] if len(compliance_series) > 0 else 0
+                
                 fig = create_kpi_card(
                     f"{country} - E.coli",
                     compliance,
@@ -211,40 +217,44 @@ def render_service_page(data, countries_filter, date_range=None):
     # Quality trends over time
     st.subheader("Water Quality Trends Over Time")
     
-    fig = go.Figure()
-    
-    fig.add_trace(go.Scatter(
-        x=quality_trend['date'],
-        y=quality_trend['chlorine_rate'],
-        mode='lines',
-        name='Chlorine Compliance',
-        line=dict(color=COLORS['primary'])
-    ))
-    
-    fig.add_trace(go.Scatter(
-        x=quality_trend['date'],
-        y=quality_trend['ecoli_rate'],
-        mode='lines',
-        name='E.coli Compliance',
-        line=dict(color=COLORS['good'])
-    ))
-    
-    fig.add_hline(
-        y=95,
-        line_dash="dash",
-        line_color="red",
-        annotation_text="Benchmark: 95%"
-    )
-    
-    fig.update_layout(
-        title="Water Quality Compliance Over Time",
-        height=400,
-        hovermode='x unified',
-        yaxis_title="Compliance Rate (%)",
-        xaxis_title="Date"
-    )
-    
-    st.plotly_chart(fig, width='stretch')
+    # Validate data before visualization
+    if quality_trend.empty or len(quality_trend) < 2:
+        st.info("Insufficient data for water quality trend visualization. Need at least 2 data points.")
+    else:
+        fig = go.Figure()
+        
+        fig.add_trace(go.Scatter(
+            x=quality_trend['date'],
+            y=quality_trend['chlorine_rate'],
+            mode='lines',
+            name='Chlorine Compliance',
+            line=dict(color=COLORS['primary'])
+        ))
+        
+        fig.add_trace(go.Scatter(
+            x=quality_trend['date'],
+            y=quality_trend['ecoli_rate'],
+            mode='lines',
+            name='E.coli Compliance',
+            line=dict(color=COLORS['good'])
+        ))
+        
+        fig.add_hline(
+            y=95,
+            line_dash="dash",
+            line_color="red",
+            annotation_text="Benchmark: 95%"
+        )
+        
+        fig.update_layout(
+            title="Water Quality Compliance Over Time",
+            height=400,
+            hovermode='x unified',
+            yaxis_title="Compliance Rate (%)",
+            xaxis_title="Date"
+        )
+        
+        st.plotly_chart(fig, width='stretch')
     
     st.markdown("---")
     

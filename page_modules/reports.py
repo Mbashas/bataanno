@@ -197,21 +197,26 @@ def build_report_pdf(
         pdf.ln(2)
         
         if not performance_df.empty and len(performance_df) > 1:
-            # Find leaders
-            best_water = performance_df.loc[performance_df['Water Coverage'].idxmax()]
-            best_nrw = performance_df.loc[performance_df['NRW'].idxmin()]
-            best_occr = performance_df.loc[performance_df['OCCR'].idxmax()]
-            
-            pdf.set_font("Helvetica", "B", 10)
-            pdf.cell(0, 6, "Performance Leaders:", ln=True)
-            pdf.set_font("Helvetica", "", 10)
-            
-            pdf.multi_cell(content_width, 5, 
-                f"  - Water Coverage: {best_water['Country']} ({best_water['Water Coverage']:.1f}%)")
-            pdf.multi_cell(content_width, 5,
-                f"  - NRW Management: {best_nrw['Country']} ({best_nrw['NRW']:.1f}%)")
-            pdf.multi_cell(content_width, 5,
-                f"  - Cost Recovery: {best_occr['Country']} ({best_occr['OCCR']:.1f}%)")
+            # Find leaders (with safety checks for idxmax/idxmin)
+            try:
+                best_water = performance_df.loc[performance_df['Water Coverage'].idxmax()]
+                best_nrw = performance_df.loc[performance_df['NRW'].idxmin()]
+                best_occr = performance_df.loc[performance_df['OCCR'].idxmax()]
+                
+                pdf.set_font("Helvetica", "B", 10)
+                pdf.cell(0, 6, "Performance Leaders:", ln=True)
+                pdf.set_font("Helvetica", "", 10)
+                
+                pdf.multi_cell(content_width, 5, 
+                    f"  - Water Coverage: {best_water['Country']} ({best_water['Water Coverage']:.1f}%)")
+                pdf.multi_cell(content_width, 5,
+                    f"  - NRW Management: {best_nrw['Country']} ({best_nrw['NRW']:.1f}%)")
+                pdf.multi_cell(content_width, 5,
+                    f"  - Cost Recovery: {best_occr['Country']} ({best_occr['OCCR']:.1f}%)")
+            except (ValueError, KeyError):
+                # Handle case where data is insufficient for comparison
+                pdf.set_font("Helvetica", "I", 10)
+                pdf.multi_cell(content_width, 5, "Insufficient data for performance comparison.")
         
         pdf.ln(3)
 
@@ -374,29 +379,35 @@ def render_reports_page(data, countries_filter, date_range=None):
     with col1:
         st.subheader("✅ Top Performers")
         
-        if not performance_df.empty:
-            # Best in water coverage
-            top_water = performance_df.nlargest(1, 'Water Coverage').iloc[0]
-            st.success(f"""
-            **🥇 Best Water Coverage:** {top_water['Country']}  
-            **Coverage:** {top_water['Water Coverage']:.1f}%
+        if not performance_df.empty and len(performance_df) > 0:
+            # Best in water coverage (with safety check)
+            top_water_df = performance_df.nlargest(1, 'Water Coverage')
+            if not top_water_df.empty:
+                top_water = top_water_df.iloc[0]
+                st.success(f"""
+                **🥇 Best Water Coverage:** {top_water['Country']}  
+                **Coverage:** {top_water['Water Coverage']:.1f}%
+                
+                *Best practices to replicate across other countries*
+                """)
             
-            *Best practices to replicate across other countries*
-            """)
+            # Best OCCR (with safety check)
+            top_occr_df = performance_df.nlargest(1, 'OCCR')
+            if not top_occr_df.empty:
+                top_occr = top_occr_df.iloc[0]
+                st.success(f"""
+                **💰 Best Cost Recovery:** {top_occr['Country']}  
+                **OCCR:** {top_occr['OCCR']:.1f}%
+                
+                *Financial sustainability model for others to follow*
+                """)
             
-            # Best OCCR
-            top_occr = performance_df.nlargest(1, 'OCCR').iloc[0]
-            st.success(f"""
-            **💰 Best Cost Recovery:** {top_occr['Country']}  
-            **OCCR:** {top_occr['OCCR']:.1f}%
-            
-            *Financial sustainability model for others to follow*
-            """)
-            
-            # Best collection efficiency
-            top_coll = performance_df.nlargest(1, 'Collection Efficiency').iloc[0]
-            st.success(f"""
-            **💵 Best Collection Efficiency:** {top_coll['Country']}  
+            # Best collection efficiency (with safety check)
+            top_coll_df = performance_df.nlargest(1, 'Collection Efficiency')
+            if not top_coll_df.empty:
+                top_coll = top_coll_df.iloc[0]
+                st.success(f"""
+                **💵 Best Collection Efficiency:** {top_coll['Country']}  
             **Efficiency:** {top_coll['Collection Efficiency']:.1f}%
             
             *Strong revenue collection practices*

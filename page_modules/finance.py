@@ -11,6 +11,7 @@ from plotly.subplots import make_subplots
 import numpy as np
 from utils.kpi_calculator import calculate_occr, calculate_collection_efficiency
 from utils.visualizations import create_occr_dashboard, create_waterfall_chart, COLORS
+from utils.currency_config import format_currency_multi_country, get_currency_label
 
 
 def render_finance_page(data, countries_filter, date_range=None):
@@ -25,6 +26,16 @@ def render_finance_page(data, countries_filter, date_range=None):
     if countries_filter:
         finance_df = finance_df[finance_df['country'].isin(countries_filter)]
     
+    # Currency context banner
+    selected_countries = finance_df['country'].unique().tolist() if not finance_df.empty else []
+    if len(selected_countries) == 1:
+        currency_label = get_currency_label(selected_countries[0])
+        st.info(f"💱 **Currency Context:** All financial metrics displayed in {currency_label}")
+    elif len(selected_countries) > 1:
+        from utils.currency_config import CURRENCY_CONFIG
+        currencies = ', '.join([CURRENCY_CONFIG.get(c, {}).get('symbol', 'LCU') for c in selected_countries])
+        st.warning(f"💱 **Multi-Currency View:** Data includes {currencies}. Values are in local currencies and NOT directly comparable without conversion.")
+    
     st.markdown("---")
     
     # Key Financial Metrics
@@ -36,20 +47,23 @@ def render_finance_page(data, countries_filter, date_range=None):
     total_opex = finance_df['opex'].sum()
     uncollected = total_billed - total_revenue
     
+    # Get selected countries for currency formatting
+    selected_countries = finance_df['country'].unique().tolist() if not finance_df.empty else []
+    
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         st.metric(
             "Total Billed",
-            f"${total_billed / 1_000_000:,.1f}M",
-            help="Total amount billed to customers"
+            format_currency_multi_country(total_billed, selected_countries),
+            help="Total amount billed to customers (local currency)"
         )
     
     with col2:
         st.metric(
             "Revenue Collected",
-            f"${total_revenue / 1_000_000:,.1f}M",
-            help="Total revenue collected from customers"
+            format_currency_multi_country(total_revenue, selected_countries),
+            help="Total revenue collected from customers (local currency)"
         )
     
     with col3:
@@ -80,25 +94,25 @@ def render_finance_page(data, countries_filter, date_range=None):
     with col5:
         st.metric(
             "Operating Expenses",
-            f"${total_opex / 1_000_000:,.1f}M",
-            help="Total operational expenditure"
+            format_currency_multi_country(total_opex, selected_countries),
+            help="Total operational expenditure (local currency)"
         )
     
     with col6:
         surplus_deficit = total_revenue - total_opex
         st.metric(
             "Operating Surplus/Deficit",
-            f"${surplus_deficit / 1_000_000:,.1f}M",
+            format_currency_multi_country(surplus_deficit, selected_countries),
             delta_color="normal" if surplus_deficit >= 0 else "inverse",
-            help="Revenue minus operating expenses"
+            help="Revenue minus operating expenses (local currency)"
         )
     
     with col7:
         st.metric(
             "Uncollected Revenue",
-            f"${uncollected / 1_000_000:,.1f}M",
+            format_currency_multi_country(uncollected, selected_countries),
             delta_color="inverse",
-            help="Billed amount not yet collected"
+            help="Billed amount not yet collected (local currency)"
         )
     
     with col8:
@@ -462,4 +476,373 @@ def render_finance_page(data, countries_filter, date_range=None):
     - 🎯 Set country-specific OCCR improvement targets
     - 🏦 Explore credit facilities for infrastructure investment
     """)
+    
+    # ============================================================================
+    # SECTION C: CUSTOMER PAYMENT BEHAVIOR BY ZONE (NEW)
+    # ============================================================================
+    st.markdown("---")
+    st.header("💳 Customer Payment Behavior by Zone")
+    st.markdown("Analyze revenue collection efficiency at the zone level using customer billing data")
+    
+    # Check if billing data is available
+    if 'billing' in data and len(data['billing']) > 0:
+        billing_df = data['billing']
+        
+        # Apply filters
+        if countries_filter:
+            billing_df = billing_df[billing_df['country'].isin(countries_filter)]
+        
+        # Get payment by zone
+        from utils.kpi_calculator import get_payment_by_zone
+        payment_by_zone = get_payment_by_zone(billing_df)
+        
+        # Display summary metrics
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric(
+                "Total Customers",
+                f"{payment_by_zone['customer_count'].sum():,.0f}",
+                help="Total number of customers in selected countries"
+            )
+        with col2:
+            avg_collection_rate = payment_by_zone['collection_rate'].mean()
+            st.metric(
+                "Avg Collection Rate",
+                f"{avg_collection_rate:.1f}%",
+                help="Average collection rate across all zones"
+            )
+        with col3:
+            # Safe idxmax with empty check
+            if not payment_by_zone.empty and len(payment_by_zone) > 0:
+                best_zone = payment_by_zone.loc[payment_by_zone['collection_rate'].idxmax()]
+                st.metric(
+                    "Best Performing Zone",
+                    f"{best_zone['zone']}",
+                    f"{best_zone['collection_rate']:.1f}%",
+                    help="Zone with highest collection rate"
+                )
+            else:
+                st.metric("Best Performing Zone", "N/A", help="No zone data available")
+        with col4:
+            # Safe idxmin with empty check
+            if not payment_by_zone.empty and len(payment_by_zone) > 0:
+                worst_zone = payment_by_zone.loc[payment_by_zone['collection_rate'].idxmin()]
+                st.metric(
+                    "Needs Attention",
+                    f"{worst_zone['zone']}",
+                    f"{worst_zone['collection_rate']:.1f}%",
+                    delta_color="inverse",
+                    help="Zone with lowest collection rate"
+                )
+            else:
+                st.metric("Needs Attention", "N/A", help="No zone data available")
+        
+        # Bar chart visualization
+        st.subheader("Collection Rate by Zone")
+        
+        # Validate data before visualization
+        if payment_by_zone.empty or len(payment_by_zone) == 0:
+            st.info("No zone-level payment data available for visualization.")
+        else:
+            fig = px.bar(
+                payment_by_zone.sort_values('collection_rate', ascending=False),
+                x='zone',
+                y='collection_rate',
+                color='collection_rate',
+                color_continuous_scale='RdYlGn',
+                range_color=[0, 100],
+                hover_data=['total_billed', 'total_paid', 'customer_count'],
+                title='Revenue Collection Efficiency by Zone',
+                labels={'collection_rate': 'Collection Rate (%)', 'zone': 'Zone'}
+            )
+            
+            fig.update_layout(
+                height=500,
+                xaxis_tickangle=-45,
+                paper_bgcolor=COLORS['bg_chart'],
+                plot_bgcolor=COLORS['bg_chart'],
+                font={'color': COLORS['text_dark']}
+            )
+            
+            st.plotly_chart(fig, width='stretch')
+        
+        # Zone comparison table
+        st.subheader("Zone Performance Details")
+        display_df = payment_by_zone.copy()
+        display_df['total_billed'] = display_df['total_billed'].apply(lambda x: f"${x/1e6:.2f}M")
+        display_df['total_paid'] = display_df['total_paid'].apply(lambda x: f"${x/1e6:.2f}M")
+        display_df['collection_rate'] = display_df['collection_rate'].apply(lambda x: f"{x:.1f}%")
+        
+        st.dataframe(
+            display_df[['country', 'zone', 'customer_count', 'total_billed', 'total_paid', 'collection_rate']],
+            use_container_width=True
+        )
+    else:
+        st.warning("⚠️ Customer billing data not available. Please ensure billing.csv is loaded.")
+    
+    # ============================================================================
+    # SECTION D: PAYMENT RISK DASHBOARD (NEW)
+    # ============================================================================
+    st.markdown("---")
+    st.header("⚠️ Customer Payment Risk Analysis")
+    st.markdown("Identify customers at risk of non-payment and prioritize collection efforts")
+    
+    if 'billing' in data and len(data['billing']) > 0:
+        billing_df = data['billing']
+        
+        # Apply filters
+        if countries_filter:
+            billing_df = billing_df[billing_df['country'].isin(countries_filter)]
+        
+        # Identify risk customers
+        from utils.kpi_calculator import identify_payment_risk_customers
+        risk_customers = identify_payment_risk_customers(billing_df)
+        
+        # Display risk metrics
+        st.subheader("Customer Risk Segmentation")
+        col1, col2, col3 = st.columns(3)
+        
+        high_risk_count = len(risk_customers[risk_customers['risk_category'] == 'High Risk'])
+        medium_risk_count = len(risk_customers[risk_customers['risk_category'] == 'Medium Risk'])
+        low_risk_count = len(risk_customers[risk_customers['risk_category'] == 'Low Risk'])
+        
+        with col1:
+            st.metric(
+                "🔴 High Risk Customers",
+                f"{high_risk_count:,}",
+                f"{high_risk_count/len(risk_customers)*100:.1f}%",
+                delta_color="inverse",
+                help="Customers who paid < 50% of billed amount"
+            )
+        
+        with col2:
+            st.metric(
+                "🟡 Medium Risk Customers",
+                f"{medium_risk_count:,}",
+                f"{medium_risk_count/len(risk_customers)*100:.1f}%",
+                help="Customers who paid 50-80% of billed amount"
+            )
+        
+        with col3:
+            st.metric(
+                "🟢 Low Risk Customers",
+                f"{low_risk_count:,}",
+                f"{low_risk_count/len(risk_customers)*100:.1f}%",
+                help="Customers who paid ≥ 80% of billed amount"
+            )
+        
+        # Risk distribution pie chart
+        col_left, col_right = st.columns(2)
+        
+        with col_left:
+            st.subheader("Risk Category Distribution")
+            risk_counts = risk_customers['risk_category'].value_counts()
+            
+            fig = go.Figure(data=[go.Pie(
+                labels=risk_counts.index,
+                values=risk_counts.values,
+                hole=0.3,
+                marker=dict(colors=[COLORS['poor'], COLORS['acceptable'], COLORS['good']])
+            )])
+            
+            fig.update_layout(
+                title='Customer Distribution by Risk Category',
+                height=400,
+                paper_bgcolor=COLORS['bg_chart'],
+                font={'color': COLORS['text_dark']}
+            )
+            
+            st.plotly_chart(fig, width='stretch')
+        
+        with col_right:
+            st.subheader("Unpaid Amount by Risk Category")
+            unpaid_by_risk = risk_customers.groupby('risk_category')['unpaid_amount'].sum().reset_index()
+            
+            fig = px.bar(
+                unpaid_by_risk,
+                x='risk_category',
+                y='unpaid_amount',
+                color='risk_category',
+                color_discrete_map={
+                    'High Risk': COLORS['poor'],
+                    'Medium Risk': COLORS['acceptable'],
+                    'Low Risk': COLORS['good']
+                },
+                title='Total Unpaid Amount by Risk Category',
+                labels={'unpaid_amount': 'Unpaid Amount ($)', 'risk_category': 'Risk Category'}
+            )
+            
+            fig.update_layout(
+                height=400,
+                showlegend=False,
+                paper_bgcolor=COLORS['bg_chart'],
+                plot_bgcolor=COLORS['bg_chart'],
+                font={'color': COLORS['text_dark']}
+            )
+            st.plotly_chart(fig, width='stretch')
+        
+        # Top 10 Non-Payers
+        st.subheader("🔴 Top 10 Customers with Highest Unpaid Bills")
+        top_unpaid = risk_customers.nlargest(10, 'unpaid_amount')
+        
+        fig = px.bar(
+            top_unpaid,
+            x='customer_id',
+            y='unpaid_amount',
+            color='zone',
+            hover_data=['country', 'billed', 'paid', 'payment_ratio'],
+            title='Top 10 Customers by Unpaid Amount',
+            labels={'unpaid_amount': 'Unpaid Amount ($)', 'customer_id': 'Customer ID'}
+        )
+        
+        fig.update_layout(
+            height=500,
+            xaxis_title='Customer ID',
+            yaxis_title='Unpaid Amount ($)',
+            paper_bgcolor=COLORS['bg_chart'],
+            plot_bgcolor=COLORS['bg_chart'],
+            font={'color': COLORS['text_dark']}
+        )
+        
+        st.plotly_chart(fig, width='stretch')
+        
+        # Actionable recommendations
+        high_risk_unpaid = risk_customers[risk_customers['risk_category'] == 'High Risk']['unpaid_amount'].sum()
+        top_zones = risk_customers[risk_customers['risk_category'] == 'High Risk'].groupby('zone').size().nlargest(3).index.tolist()
+        
+        st.info(f"""
+        **💡 Recommended Actions:**
+        - **Immediate Priority**: Contact {high_risk_count:,} high-risk customers for payment follow-up
+        - **Potential Revenue Recovery**: ${high_risk_unpaid/1e6:.2f}M from high-risk customers
+        - **Focus Zones**: {', '.join(top_zones[:3])}
+        """)
+    else:
+        st.warning("⚠️ Customer billing data not available. Please ensure billing.csv is loaded.")
+    
+    # ============================================================================
+    # SECTION E: COMMERCIAL VS. PHYSICAL NRW BREAKDOWN (NEW)
+    # ============================================================================
+    st.markdown("---")
+    st.header("📊 Non-Revenue Water: Commercial vs. Physical Losses")
+    st.markdown("Diagnose the root cause of NRW - infrastructure issues or revenue management")
+    
+    if 'billing' in data and 'production' in data and len(data['billing']) > 0:
+        billing_df = data['billing']
+        production_df = data['production']
+        
+        # Apply filters
+        if countries_filter:
+            billing_df = billing_df[billing_df['country'].isin(countries_filter)]
+            production_df = production_df[production_df['country'].isin(countries_filter)]
+        
+        # Calculate losses
+        from utils.kpi_calculator import calculate_commercial_nrw, calculate_physical_nrw
+        
+        commercial_losses = calculate_commercial_nrw(billing_df, finance_df)
+        physical_losses = calculate_physical_nrw(production_df, billing_df)
+        
+        # Calculate revenue water
+        total_produced = production_df['production_m3'].sum()
+        revenue_water = max(total_produced - physical_losses - commercial_losses, 0)
+        
+        # Display summary metrics
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            physical_pct = (physical_losses / total_produced * 100) if total_produced > 0 else 0
+            st.metric(
+                "Physical Losses",
+                f"{physical_losses/1e6:.2f}M m³",
+                f"{physical_pct:.1f}% of production",
+                delta_color="inverse",
+                help="Water lost through leaks, theft, meter inaccuracies"
+            )
+        
+        with col2:
+            commercial_pct = (commercial_losses / total_produced * 100) if total_produced > 0 else 0
+            st.metric(
+                "Commercial Losses",
+                f"{commercial_losses/1e6:.2f}M m³",
+                f"{commercial_pct:.1f}% of production",
+                delta_color="inverse",
+                help="Revenue lost due to non-payment (volume equivalent)"
+            )
+        
+        with col3:
+            revenue_pct = (revenue_water / total_produced * 100) if total_produced > 0 else 0
+            st.metric(
+                "Revenue Water",
+                f"{revenue_water/1e6:.2f}M m³",
+                f"{revenue_pct:.1f}% of production",
+                help="Water that generates revenue"
+            )
+        
+        # Pie chart visualization
+        col_chart, col_insights = st.columns([2, 1])
+        
+        with col_chart:
+            fig = go.Figure(data=[go.Pie(
+                labels=['Physical Losses', 'Commercial Losses', 'Revenue Water'],
+                values=[physical_losses, commercial_losses, revenue_water],
+                hole=0.4,
+                marker=dict(colors=[COLORS['poor'], '#ff7043', COLORS['good']]),
+                textinfo='label+percent',
+                textposition='outside'
+            )])
+            
+            fig.update_layout(
+                title='NRW Breakdown: Physical vs. Commercial Losses',
+                height=500,
+                showlegend=True,
+                paper_bgcolor=COLORS['bg_chart'],
+                font={'color': COLORS['text_dark']}
+            )
+            
+            st.plotly_chart(fig, width='stretch')
+        
+        with col_insights:
+            st.subheader("Key Insights")
+            
+            if physical_pct > commercial_pct:
+                st.error(f"""
+                **🔧 Infrastructure Priority**
+                
+                Physical losses ({physical_pct:.1f}%) exceed commercial losses ({commercial_pct:.1f}%).
+                
+                **Recommended Actions:**
+                - Conduct leak detection surveys
+                - Repair aging infrastructure
+                - Upgrade meter accuracy
+                - Implement pressure management
+                """)
+            else:
+                st.warning(f"""
+                **💰 Revenue Management Priority**
+                
+                Commercial losses ({commercial_pct:.1f}%) exceed physical losses ({physical_pct:.1f}%).
+                
+                **Recommended Actions:**
+                - Improve billing accuracy
+                - Enhance collection efforts
+                - Implement disconnection policies
+                - Offer payment plans
+                """)
+            
+            total_nrw_pct = physical_pct + commercial_pct
+            benchmark = 25.0
+            
+            if total_nrw_pct > benchmark:
+                gap_volume = (total_produced * (total_nrw_pct - benchmark) / 100) / 1e6
+                st.info(f"""
+                **📊 Overall NRW Status**
+                
+                Total NRW: {total_nrw_pct:.1f}%  
+                Benchmark: ≤{benchmark}%  
+                Gap: {total_nrw_pct - benchmark:.1f}%
+                
+                Reducing NRW to benchmark could save:
+                - {gap_volume:.2f}M m³
+                """)
+    else:
+        st.warning("⚠️ Billing or production data not available. Please ensure all datasets are loaded.")
 

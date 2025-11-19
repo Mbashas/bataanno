@@ -387,3 +387,158 @@ def calculate_country_kpis(data, country):
     
     return kpis
 
+
+# ============================================================================
+# CUSTOMER-LEVEL FINANCIAL ANALYSIS FUNCTIONS (NEW - for billing.csv)
+# ============================================================================
+
+def calculate_revenue_collection_efficiency_customer_level(billing_df, country=None, date_range=None):
+    """
+    Calculate RCE using billing.csv for customer-level granularity
+    
+    Args:
+        billing_df: Customer billing dataframe
+        country: Optional country filter (string or list)
+        date_range: Optional (start_date, end_date) tuple
+    
+    Returns:
+        tuple: (rce_percentage, total_billed, total_paid)
+    """
+    df = billing_df.copy()
+    
+    # Apply filters
+    if country:
+        if isinstance(country, str):
+            df = df[df['country'] == country]
+        else:
+            df = df[df['country'].isin(country)]
+    
+    if date_range:
+        df = df[(df['date'] >= pd.to_datetime(date_range[0])) & 
+                (df['date'] <= pd.to_datetime(date_range[1]))]
+    
+    total_billed = df['billed'].sum()
+    total_paid = df['paid'].sum()
+    rce = (total_paid / total_billed * 100) if total_billed > 0 else 0
+    
+    return rce, total_billed, total_paid
+
+
+def identify_payment_risk_customers(billing_df, threshold_high=0.5, threshold_medium=0.8):
+    """
+    Segment customers by payment behavior
+    
+    Args:
+        billing_df: Customer billing dataframe
+        threshold_high: Payment ratio below this is High Risk (default 0.5)
+        threshold_medium: Payment ratio below this is Medium Risk (default 0.8)
+    
+    Returns:
+        DataFrame with columns: customer_id, billed, paid, country, zone, 
+                                payment_ratio, risk_category, unpaid_amount
+    """
+    customer_summary = billing_df.groupby('customer_id').agg({
+        'billed': 'sum',
+        'paid': 'sum',
+        'country': 'first',
+        'zone': 'first'
+    }).reset_index()
+    
+    # Calculate payment ratio with zero-division protection
+    customer_summary['payment_ratio'] = np.where(
+        customer_summary['billed'] != 0, 
+        customer_summary['paid'] / customer_summary['billed'], 
+        0
+    )
+    customer_summary['risk_category'] = customer_summary['payment_ratio'].apply(
+        lambda x: 'High Risk' if x < threshold_high else (
+            'Medium Risk' if x < threshold_medium else 'Low Risk'
+        )
+    )
+    customer_summary['unpaid_amount'] = customer_summary['billed'] - customer_summary['paid']
+    
+    return customer_summary
+
+
+def calculate_commercial_nrw(billing_df, all_fin_service_df):
+    """
+    Calculate commercial NRW (revenue losses due to non-payment)
+    
+    Commercial losses represent the volume equivalent of unpaid bills.
+    This is water that was delivered and billed but not paid for.
+    
+    Args:
+        billing_df: Customer billing dataframe
+        all_fin_service_df: Financial service dataframe
+    
+    Returns:
+        float: Commercial losses in m³
+    """
+    total_billed_volume = billing_df['consumption_m3'].sum()
+    
+    # Calculate average tariff (revenue per m³)
+    total_revenue = all_fin_service_df['sewer_revenue'].sum()
+    total_billed_amount = billing_df['billed'].sum()
+    
+    if total_billed_volume == 0 or total_billed_amount == 0:
+        return 0
+    
+    avg_tariff = total_revenue / total_billed_volume
+    
+    # Convert paid amount to volume equivalent
+    total_paid = billing_df['paid'].sum()
+    total_paid_volume_equivalent = total_paid / avg_tariff if avg_tariff > 0 else 0
+    
+    # Commercial losses = billed volume - paid volume equivalent
+    commercial_losses = total_billed_volume - total_paid_volume_equivalent
+    
+    return max(commercial_losses, 0)  # Ensure non-negative
+
+
+def calculate_physical_nrw(production_df, billing_df):
+    """
+    Calculate physical NRW (water lost through leaks, theft, meter inaccuracies)
+    
+    Physical losses represent actual water that was produced but never billed.
+    This includes leaks, unauthorized connections, and meter under-registration.
+    
+    Args:
+        production_df: Production dataframe
+        billing_df: Customer billing dataframe
+    
+    Returns:
+        float: Physical losses in m³
+    """
+    total_produced = production_df['production_m3'].sum()
+    total_billed_volume = billing_df['consumption_m3'].sum()
+    
+    # Physical losses = produced - billed
+    physical_losses = total_produced - total_billed_volume
+    
+    return max(physical_losses, 0)  # Ensure non-negative
+
+
+def get_payment_by_zone(billing_df):
+    """
+    Aggregate payment data by zone for geographic analysis
+    
+    Args:
+        billing_df: Customer billing dataframe
+    
+    Returns:
+        DataFrame with columns: country, zone, total_billed, total_paid, 
+                                customer_count, collection_rate
+    """
+    payment_by_zone = billing_df.groupby(['country', 'zone']).agg({
+        'billed': 'sum',
+        'paid': 'sum',
+        'customer_id': 'count'
+    }).reset_index()
+    
+    payment_by_zone.columns = ['country', 'zone', 'total_billed', 'total_paid', 'customer_count']
+    payment_by_zone['collection_rate'] = (
+        payment_by_zone['total_paid'] / payment_by_zone['total_billed'] * 100
+    ).fillna(0)
+    
+    return payment_by_zone
+

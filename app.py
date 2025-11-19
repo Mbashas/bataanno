@@ -233,8 +233,29 @@ st.markdown("""
     #MainMenu {
         visibility: hidden;
     }
-    header {
+    footer {
         visibility: hidden;
+    }
+    
+    /* Keep header visible for sidebar toggle button */
+    header {
+        visibility: visible !important;
+    }
+    
+    /* Hide only the specific branding elements within header */
+    header[data-testid="stHeader"] > div:first-child {
+        background-color: transparent !important;
+    }
+    
+    /* Style the header to be minimal and clean */
+    header[data-testid="stHeader"] {
+        background-color: transparent !important;
+    }
+    
+    /* Ensure sidebar toggle button is visible and styled */
+    button[kind="header"] {
+        visibility: visible !important;
+        color: var(--text-dark) !important;
     }
     
     /* ===== ANTI-ALIASING FOR SMOOTH TEXT ===== */

@@ -116,17 +116,21 @@ def render_production_page(data, countries_filter, date_range=None):
         'production_m3': 'sum'
     }).reset_index()
     
-    fig = px.line(
-        daily_prod,
-        x='date',
-        y='production_m3',
-        title='Daily Total Production Volume',
-        labels={'production_m3': 'Production (m³)', 'date': 'Date'}
-    )
-    fig.update_traces(line_color=COLORS['primary'])
-    fig.update_layout(height=400, hovermode='x unified')
-    
-    st.plotly_chart(fig, width='stretch')
+    # Validate data before visualization
+    if daily_prod.empty or len(daily_prod) < 2:
+        st.info("Insufficient data for daily production trend. Need at least 2 data points.")
+    else:
+        fig = px.line(
+            daily_prod,
+            x='date',
+            y='production_m3',
+            title='Daily Total Production Volume',
+            labels={'production_m3': 'Production (m³)', 'date': 'Date'}
+        )
+        fig.update_traces(line_color=COLORS['primary'])
+        fig.update_layout(height=400, hovermode='x unified')
+        
+        st.plotly_chart(fig, width='stretch')
     
     # Monthly trends by country
     production_df['month_year'] = production_df['date'].dt.to_period('M').astype(str)
@@ -386,13 +390,18 @@ def render_production_page(data, countries_filter, date_range=None):
         
         st.plotly_chart(fig, width='stretch')
         
-        peak_month = monthly_pattern.loc[monthly_pattern['production_m3'].idxmax(), 'month']
-        low_month = monthly_pattern.loc[monthly_pattern['production_m3'].idxmin(), 'month']
-        
-        st.info(f"""
-        **Peak Production Month**: Month {int(peak_month)}  
-        **Lowest Production Month**: Month {int(low_month)}
-        
-        Consider seasonal demand patterns and plan maintenance during low-demand periods.
-        """)
+        # Safe idxmax/idxmin with empty check
+        if not monthly_pattern.empty and len(monthly_pattern) > 0:
+            try:
+                peak_month = monthly_pattern.loc[monthly_pattern['production_m3'].idxmax(), 'month']
+                low_month = monthly_pattern.loc[monthly_pattern['production_m3'].idxmin(), 'month']
+                
+                st.info(f"""
+                **Peak Production Month**: Month {int(peak_month)}  
+                **Lowest Production Month**: Month {int(low_month)}
+                
+                Consider seasonal demand patterns and plan maintenance during low-demand periods.
+                """)
+            except (ValueError, KeyError):
+                st.info("Insufficient data to identify peak and low production months.")
 

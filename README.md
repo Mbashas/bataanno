@@ -41,6 +41,9 @@ A comprehensive Streamlit dashboard for analyzing water and sanitation service p
    - Revenue collection efficiency
    - Financial waterfall analysis
    - Cost structure and staffing metrics
+   - **NEW**: Customer payment behavior by zone
+   - **NEW**: Payment risk dashboard (High/Medium/Low Risk customers)
+   - **NEW**: Commercial vs. Physical NRW breakdown
 
 ### Four Types of Insights
 
@@ -93,7 +96,8 @@ Data/
 ├── w_access.csv
 ├── s_access.csv
 ├── all_fin_service.csv
-└── all_national.csv
+├── all_national.csv
+└── billing.csv (NEW - 720,119 customer records)
 ```
 
 ## 🎯 Usage
@@ -134,7 +138,8 @@ DASHADI/
 │   ├── w_access.csv
 │   ├── s_access.csv
 │   ├── all_fin_service.csv
-│   └── all_national.csv
+│   ├── all_national.csv
+│   └── billing.csv            # NEW: Customer-level billing data
 ├── utils/                      # Utility modules
 │   ├── data_loader.py         # Data loading and caching
 │   ├── kpi_calculator.py      # KPI calculation formulas
@@ -162,7 +167,15 @@ All data files should be in CSV format with the following structures:
 - `service_hours`: Hours of service per day
 - `country`: Country name
 
-#### 2. w_service.csv (Monthly, by zone)
+#### 2. billing.csv (Monthly, by customer) **NEW**
+- `customer_id`: Unique customer identifier
+- `date`: Date in YYYY-MM-DD format
+- `consumption_m3`: Water consumption in cubic meters
+- `billed`: Amount billed to customer
+- `paid`: Amount paid by customer
+- `country`, `zone`, `source`: Geographic and source information
+
+#### 3. w_service.csv (Monthly, by zone)
 - `country`, `zone`, `date_MMYY` (MMM/YY format)
 - `households`, `tests_chlorine`, `tests_ecoli`
 - `tests_conducted_chlorine`, `test_conducted_ecoli`
@@ -170,14 +183,14 @@ All data files should be in CSV format with the following structures:
 - `w_supplied`, `total_consumption`, `metered`
 - `ww_capacity`
 
-#### 3. s_service.csv (Monthly, by zone)
+#### 4. s_service.csv (Monthly, by zone)
 - `country`, `zone`, `date_MMYY`
 - `households`, `sewer_connections`, `public_toilets`
 - `workforce`, `f_workforce`
 - `ww_collected`, `ww_treated`, `ww_reused`
 - `w_supplied`, `hh_emptied`, `fs_treated`, `fs_reused`
 
-#### 4. w_access.csv (Annual, by zone)
+#### 5. w_access.csv (Annual, by zone)
 - `country`, `zone`, `date_YY` (YYYY format)
 - `safely_managed`, `safely_managed_pct`
 - `basic`, `basic_pct`
@@ -186,7 +199,7 @@ All data files should be in CSV format with the following structures:
 - `surface_water`, `surface_water_pct`
 - `popn_total`, `households`, `municipal_coverage`
 
-#### 5. s_access.csv (Annual, by zone)
+#### 6. s_access.csv (Annual, by zone)
 - `country`, `zone`, `date_YY`
 - `safely_managed`, `safely_managed_pct`
 - `basic`, `basic_pct`
@@ -195,13 +208,13 @@ All data files should be in CSV format with the following structures:
 - `open_def`, `open_def_pct`
 - `popn_total`, `households`
 
-#### 6. all_fin_service.csv (Monthly, by city)
+#### 7. all_fin_service.csv (Monthly, by city)
 - `country`, `city`, `date_MMYY`
 - `sewer_length`, `complaints`, `resolved`, `blocks`
 - `sewer_billed`, `sewer_revenue`, `opex`
 - `san_staff`, `w_staff`, `propoor_popn`
 
-#### 7. all_national.csv (Annual, national accounts)
+#### 8. all_national.csv (Annual, national accounts)
 - `country`, `city`, `date_YY`
 - `budget_allocated`, `san_allocation`, `wat_allocation`
 - `staff_cost`, `water_resources`, `trained_staff`
