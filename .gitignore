@@ -45,7 +45,9 @@ ENV/
 .env.local
 
 # Data files (if you don't want to commit data)
-# Uncomment if data should not be version controlled
+# Large CSV files - keep local only
+#Data/billing.csv
+# Uncomment below to ignore all CSV files
 # Data/*.csv
 
 # Logs
@@ -60,11 +62,15 @@ Thumbs.db
 *.bak
 
 # Documentation - Keep only essential docs
-# Keep: README.md, QUICKSTART.md, PROJECT_SUMMARY.md, BILLING_INTEGRATION_SUMMARY.md
+# Keep: README.md, QUICKSTART.md, PROJECT_SUMMARY.md
+BEFORE_AFTER_COMPARISON.md
+BILLING_INTEGRATION_SUMMARY.md
 BUGFIX_SUMMARY.md
 COLOR_SCHEME_GUIDE.md
 CONTRAST_FIX.md
+CURRENCY_LOCALIZATION_FIX.md
 FINAL_FIXES_SUMMARY.md
+FRAGILITY_FIXES_SUMMARY.md
 GAP_ANALYSIS_REPORT.md
 HIGH_CONTRAST_THEME_FIX.md
 PDF_REPORT_ENHANCEMENTS.md
