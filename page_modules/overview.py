@@ -8,8 +8,202 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from utils.kpi_calculator import calculate_summary_kpis, calculate_country_kpis, get_kpi_status
+
+import sys
+import os
+
+# --- PATH FIX: This allows imports from sibling directories like 'utils' ---
+# It adds the project root to the path, assuming this file is in a subdirectory (e.g., page_modules)
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# --------------------------------------------------------------------------
+
+# New imports for Gemini Chatbot
+from google import genai
+from google.genai.errors import APIError
+
+# NOTE: calculate_all_country_kpis is now available from this import
+from utils.kpi_calculator import calculate_summary_kpis, calculate_country_kpis, calculate_all_country_kpis, get_kpi_status 
 from utils.visualizations import create_kpi_card, create_trend_line, COLORS, BENCHMARKS
+
+
+# --- 1. LLM Configuration and Setup ---
+
+# Initialize LLM Client
+# NOTE: Client initialization happens outside the render function for efficiency
+try:
+    # Use st.secrets to securely access the API key
+    if "GEMINI_API_KEY" not in st.secrets:
+        client = None # Set client to None if key is missing
+    else:
+        client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+except Exception as e:
+    st.error(f"Error configuring Gemini client: {e}")
+    client = None
+
+MODEL_NAME = "gemini-2.5-flash"
+
+
+def get_chat_session(system_prompt):
+    """Initializes the chat session with the system prompt."""
+    if client:
+        try:
+            # Initialize the chat session with the system prompt
+            chat = client.chats.create(
+                model=MODEL_NAME,
+                config={"system_instruction": system_prompt}
+            )
+            # Return the chat object AND the system prompt for later comparison
+            return chat, system_prompt 
+        except Exception as e:
+            st.error(f"Error initializing chat session: {e}")
+            return None, None
+    return None, None
+
+
+def build_system_prompt(kpis, country_kpis):
+    """
+    Constructs the detailed instruction (system prompt) for the AI, 
+    injecting the current KPI data and system structure for context.
+    """
+    # --- KPI LIST FOR AI CONTEXT ---
+    kpi_list = (
+        f"Total Households: {kpis.get('total_households', {}).get('value', 0):,.0f}",
+        f"Access Rate Growth: {kpis.get('access_rate_growth', {}).get('value', 0):.1f}% (Target: >0%)",
+        f"NRW (Non-Revenue Water): {kpis.get('nrw', {}).get('value', 0):.1f}% (Benchmark: ≤25%)",
+        f"Revenue Collection Efficiency: {kpis.get('collection_efficiency', {}).get('value', 0):.1f}% (Target: ≥95%)",
+        f"Total Reported Complaints: {kpis.get('complaints_count', {}).get('value', 0):,.0f}",
+        f"Water Service Coverage: {kpis.get('water_service_coverage', {}).get('value', 0):.1f}% (Target: 100%)",
+        f"Service Continuity: {kpis.get('service_continuity', {}).get('value', 0):.1f} hrs/day (Benchmark: 24 hrs)",
+        f"Cost Recovery Ratio: {kpis.get('cost_recovery_ratio', {}).get('value', 0):.1f}% (Target: ≥100%)",
+        f"Operational Profit/Loss: {kpis.get('operational_profit_loss', {}).get('value', 0):,.0f} (Target: >0)",
+        f"Avg. Complaint Resolution Time: {kpis.get('complaint_resolution_time', {}).get('value', 0):.1f} days (Target: ≤5 days)",
+    )
+    
+    # --- DIAGNOSTIC INSIGHTS ---
+    diagnostic_insights = (
+        "High NRW negatively impacts cost recovery, as water is produced but not paid for.",
+        "A Cost Recovery Ratio below 100% indicates unsustainable operations, as operating costs are not covered by revenue.",
+        "Negative Access Rate Growth suggests that service expansion is not keeping pace with population growth or urban development.",
+    )
+
+    # --- DETAILED COUNTRY DATA INJECTION ---
+    country_data_string = ""
+    if country_kpis:
+        country_data_string = "\n\nDETAILED COUNTRY KPIS:\n"
+        for country, data in country_kpis.items():
+            country_data_string += f"--- {country} ---\n"
+            country_data_string += f"- NRW: {data.get('nrw', 0):.1f}% (Target ≤25%)\n"
+            country_data_string += f"- Cost Recovery Ratio: {data.get('cost_recovery_ratio', 0):.1f}% (Target ≥100%)\n"
+            country_data_string += f"- Water Service Coverage: {data.get('water_service_coverage', 0):.1f}% (Target 100%)\n"
+            
+    # --- APPLICATION STRUCTURE INJECTION (NEW) ---
+    application_structure = (
+        "This application is a Streamlit dashboard with pages accessible via the sidebar.",
+        "The available pages are: Overview (Current Page), Production, Finance, Service, and Reports.",
+        "To view country-level comparison charts and zonal data, users must navigate to the **Reports** page in the sidebar.",
+        "Historical trends are available on the **Production** page."
+    )
+    
+    # --- END: Application Structure Injection ---
+    
+    return f"""
+    You are an expert Water Sector Performance Analyst chatbot. Your sole purpose is to provide analysis and answer questions based ONLY on the data and insights provided below.
+    
+    CURRENT KPIS (The current data context from the dashboard):
+    {'\n'.join([f'- {item}' for item in kpi_list])}
+    
+    {country_data_string}
+    
+    DIAGNOSTIC INSIGHTS (The contextual rules and correlations):
+    {'\n'.join([f'- {item}' for item in diagnostic_insights])}
+    
+    APPLICATION STRUCTURE (The Streamlit app navigation context):
+    {'\n'.join([f'- {item}' for item in application_structure])}
+
+    RULES:
+    1. Respond concisely and professionally.
+    2. Directly reference the data values provided in the CURRENT KPIS or DETAILED COUNTRY KPIS when possible.
+    3. If the user asks about system navigation (e.g., 'where to find X'), use the **APPLICATION STRUCTURE** context to guide them.
+    4. If the data is not provided or the question is outside the scope of the CURRENT KPIS, DIAGNOSTIC INSIGHTS, and APPLICATION STRUCTURE, state clearly that you can only answer based on the current context.
+    5. Detect the language of the user's query and respond entirely in that detected language.
+    
+    Based on the CURRENT KPIS, the biggest operational challenge is likely related to **Non-Revenue Water (NRW)**, as the average is {kpis.get('nrw', {}).get('value', 0):.1f}%, which needs to be below the benchmark of ≤25% to ensure efficient resource use. A major financial challenge is the **Cost Recovery Ratio**, which is {kpis.get('cost_recovery_ratio', {}).get('value', 0):.1f}%, signaling that current revenues are not fully covering operating expenses.
+    """
+
+
+# --- NEW FUNCTION FOR DYNAMIC INSIGHTS ---
+
+def build_insights_prompt(kpis, country_kpis):
+    """
+    Constructs the prompt for the AI to generate a list of descriptive and
+    diagnostic insights based on the current KPI data (for the Key Insights box).
+    """
+    # --- UPDATED: KPI LIST FOR AI CONTEXT ---
+    kpi_list = (
+        f"Total Households: {kpis.get('total_households', {}).get('value', 0):,.0f}",
+        f"Access Rate Growth: {kpis.get('access_rate_growth', {}).get('value', 0):.1f}% (Target: >0%)",
+        f"NRW (Non-Revenue Water): {kpis.get('nrw', {}).get('value', 0):.1f}% (Benchmark: ≤25%)",
+        f"Revenue Collection Efficiency: {kpis.get('collection_efficiency', {}).get('value', 0):.1f}% (Target: ≥95%)",
+        f"Total Reported Complaints: {kpis.get('complaints_count', {}).get('value', 0):,.0f}",
+        f"Water Service Coverage: {kpis.get('water_service_coverage', {}).get('value', 0):.1f}% (Target: 100%)",
+        f"Service Continuity: {kpis.get('service_continuity', {}).get('value', 0):.1f} hrs/day (Benchmark: 24 hrs)",
+        f"Cost Recovery Ratio: {kpis.get('cost_recovery_ratio', {}).get('value', 0):.1f}% (Target: ≥100%)",
+        f"Operational Profit/Loss: {kpis.get('operational_profit_loss', {}).get('value', 0):,.0f} (Target: >0)",
+        f"Avg. Complaint Resolution Time: {kpis.get('complaint_resolution_time', {}).get('value', 0):.1f} days (Target: ≤5 days)",
+    )
+
+
+    country_data_string = ""
+    if country_kpis:
+        country_data_string = "\n\nDETAILED COUNTRY KPIS:\n"
+        for country, data in country_kpis.items():
+            country_data_string += f"--- {country} ---\n"
+            country_data_string += f"- NRW: {data.get('nrw', 0):.1f}% (Target ≤25%)\n"
+            country_data_string += f"- Cost Recovery Ratio: {data.get('cost_recovery_ratio', 0):.1f}% (Target ≥100%)\n"
+            country_data_string += f"- Water Service Coverage: {data.get('water_service_coverage', 0):.1f}% (Target 100%)\n"
+
+    return f"""
+    You are an expert Water Sector Performance Analyst. Analyze the following KPI data and generate 3 to 5 clear, actionable, and concise insights.
+
+    Divide your output into two sections:
+    1. **Descriptive Insights:** State 2-3 key findings directly from the data (e.g., performance against benchmarks).
+    2. **Diagnostic Insights:** State 1-2 key correlations or root causes identified from the data (e.g., 'Country X's high NRW is the main driver of low Cost Recovery').
+
+    Format the output as a clean, single markdown block with bold headings and bullet points. Do NOT include any introductory or concluding conversational text.
+
+    KPI DATA:
+    {'\n'.join([f'- {item}' for item in kpi_list])}
+    {country_data_string}
+
+    Correlations to consider:
+    - Low Cost Recovery Ratio correlates with high NRW and low Collection Efficiency.
+    - High Complaint Volume/Resolution Time suggests inadequate service delivery quality.
+    """
+
+
+@st.cache_data(show_spinner=False)
+def get_ai_insights(kpis, country_kpis):
+    """Fetches the generated insights from the AI, using caching."""
+    if not client:
+        return None
+        
+    prompt = build_insights_prompt(kpis, country_kpis)
+    
+    try:
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=prompt
+        )
+        return response.text
+    except APIError as e:
+        st.error(f"AI Analysis Error: {e.message}")
+        return None
+    except Exception as e:
+        st.error(f"An unexpected error occurred during insight generation: {e}")
+        return None
+
+
+# --- END NEW FUNCTIONS ---
 
 
 def render_overview_page(data, countries_filter, date_range=None):
@@ -18,7 +212,7 @@ def render_overview_page(data, countries_filter, date_range=None):
     st.title("📊 Overview Dashboard")
     st.markdown("### High-Level Performance Metrics Across All Countries")
     
-    # Filter data by selected countries
+    # Filter data by selected countries (Existing Logic)
     if countries_filter:
         data_filtered = {
             key: df[df['country'].isin(countries_filter)] if 'country' in df.columns else df
@@ -27,8 +221,11 @@ def render_overview_page(data, countries_filter, date_range=None):
     else:
         data_filtered = data
     
-    # Calculate KPIs
+    # Calculate KPIs (Existing Logic)
     summary_kpis = calculate_summary_kpis(data_filtered)
+    
+    # --- NEW: Calculate Country KPIs for AI Context ---
+    country_kpis = calculate_all_country_kpis(data_filtered)
     
     if not summary_kpis:
         st.warning("No KPI data is available for the current filter selection. Adjust the filters to load results.")
@@ -36,325 +233,270 @@ def render_overview_page(data, countries_filter, date_range=None):
 
     st.markdown("---")
     
-    # KPI Scorecard Section
+    # Existing KPI Scorecard Section 
     st.header("🎯 KPI Scorecard")
-    st.markdown("Compare performance against sector benchmarks across the four insight domains.")
-
+    
+    # --- MAJOR CHANGE: UPDATING KPI CARDS TO NEW LIST ---
     kpi_card_config = [
-        ('water_coverage', "Water Coverage"),
-        ('sanitation_coverage', "Sanitation Coverage"),
-        ('nrw', "Non-Revenue Water"),
-        ('water_quality', "Drinking Water Quality"),
-        ('service_hours', "Hours of Supply"),
+        # Households & Access
+        ('total_households', "Total Households"),
+        ('water_service_coverage', "Water Service Coverage"), 
+        ('access_rate_growth', "Access Rate Growth"),
+        
+        # Financial
         ('collection_efficiency', "Revenue Collection Efficiency"),
-        ('occr', "O&M Cost Coverage (OCCR)"),
-        ('personnel_cost_ratio', "Personnel Cost as % of O&M"),
-        ('metering_ratio', "Metering Ratio"),
-        ('staff_productivity', "Staff Productivity (per 1k connections)"),
+        ('cost_recovery_ratio', "Cost Recovery Ratio"), 
+        ('operational_profit_loss', "Operational Profit/Loss"),
+        
+        # Operations & Quality
+        ('nrw', "Non-Revenue Water"),
+        ('service_continuity', "Service Continuity (Hrs/Day)"),
+        ('complaints_count', "Reported Complaints (Total)"),
+        ('complaint_resolution_time', "Avg. Resolution Time (Days)"),
     ]
-
-    # Display KPI cards in rows of 4 to prevent overlap
+    
+    # Display KPI cards in rows of 4 (REFRESHED LOGIC)
     cols_per_row = 4
+    
+    # Initialize the columns container outside the loop
+    cols = st.columns(cols_per_row)
+    
     for idx, (key, title) in enumerate(kpi_card_config):
         metric = summary_kpis.get(key)
-        if metric is None:
-            continue
+        
+        # Check if metric is calculated and valid before displaying
+        if metric is None or 'value' not in metric:
+            # For the refactoring, we'll keep the skip, but once 
+            # kpi_calculator is fixed, all 10 should show.
+            continue 
 
-        if idx % cols_per_row == 0:
-            row_cols = st.columns(cols_per_row)
-
+        value = metric['value']
+        benchmark = metric['benchmark']
+        unit = metric.get('unit', '')
         inverse = metric.get('inverse', False)
-        fig = create_kpi_card(
-            title,
-            metric['value'],
-            metric['benchmark'],
-            unit=metric.get('unit', ''),
-            inverse=inverse
-        )
-
-        with row_cols[idx % cols_per_row]:
-            st.plotly_chart(fig, width='stretch')
-    
-    # Add spacing after KPI cards
+        
+        # --- NEW METRIC CALCULATION FOR ST.METRIC ---
+        
+        # Calculate Delta and format Delta Value
+        delta = value - benchmark
+        
+        if key == 'operational_profit_loss':
+            # Operational P/L usually doesn't compare to a benchmark value, 
+            # but rather to the previous period. Using the current 'delta' 
+            # (value - benchmark) is misleading. For now, let's show the value simply.
+            value_display = f"{value:,.0f}"
+            delta_value = None # No delta for P/L benchmark comparison
+            delta_color = 'off'
+        elif key == 'total_households' or key == 'complaints_count':
+            # These are absolute counts, usually compared to previous period, not a static benchmark.
+            value_display = f"{value:,.0f}"
+            delta_value = None 
+            delta_color = 'off'
+        else:
+            # Standard KPI comparison (Percent or Time)
+            value_display = f"{value:,.1f}{unit}"
+            delta_value = f"{delta:+.1f}{unit}" # Show change with +/- sign
+            
+            # Determine color based on whether the delta is good or bad
+            if inverse:
+                # E.g., NRW (lower is better): positive delta is bad (red), negative delta is good (green)
+                delta_color = 'inverse' 
+            else:
+                # E.g., Cost Recovery (higher is better): positive delta is good (green), negative delta is bad (red)
+                delta_color = 'normal'
+            
+        
+        # Get the current column index for the st.metric placement
+        col_idx = idx % cols_per_row
+        
+        with cols[col_idx]:
+            st.metric(
+                label=f"**{title}** (Target: {benchmark}{unit})",
+                value=value_display,
+                delta=delta_value,
+                delta_color=delta_color
+            )
+            
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Cross-country status heatmap setup
-    kpi_column_map = {
-        'water_coverage': 'Water Coverage (%)',
-        'sanitation_coverage': 'Sanitation Coverage (%)',
-        'nrw': 'NRW (%)',
-        'water_quality': 'Water Quality (%)',
-        'service_hours': 'Hours of Supply',
-        'collection_efficiency': 'Collection Efficiency (%)',
-        'occr': 'OCCR (%)',
-        'personnel_cost_ratio': 'Personnel Cost % of O&M',
-        'metering_ratio': 'Metering Ratio (%)',
-        'staff_productivity': 'Staff / 1k Connections'
-    }
-
-    production_df = data_filtered.get('production', pd.DataFrame())
-    countries = countries_filter if countries_filter else sorted(production_df['country'].unique()) if not production_df.empty else []
-    if len(countries) == 0 and 'w_access' in data_filtered and not data_filtered['w_access'].empty:
-        countries = sorted(data_filtered['w_access']['country'].unique())
-
-    country_comparison = []
-    for country in countries:
-        kpis = calculate_country_kpis(data_filtered, country)
-        if not kpis:
-            continue
-
-        record = {'Country': country}
-        for key, column_name in kpi_column_map.items():
-            record[column_name] = kpis.get(key, 0)
-        country_comparison.append(record)
-
-    if country_comparison:
-        st.subheader("🗺️ KPI Status by Country")
-        comparison_df = pd.DataFrame(country_comparison)
-
-        status_map = {'poor': 0, 'acceptable': 1, 'good': 2}
-        heatmap_metrics = list(kpi_column_map.items())
-        z_values = []
-        text_values = []
-
-        for key, column_name in heatmap_metrics:
-            metric = summary_kpis.get(key, {})
-            benchmark = metric.get('benchmark', 0)
-            inverse = metric.get('inverse', False)
-            unit = metric.get('unit', '')
-
-            row_status = []
-            row_text = []
-            for _, row in comparison_df.iterrows():
-                value = row[column_name]
-                status, _ = get_kpi_status(value, benchmark, inverse=inverse)
-                row_status.append(status_map.get(status, None))
-
-                if unit == '%':
-                    text = f"{value:.1f}%"
-                elif key == 'service_hours':
-                    text = f"{value:.1f} hrs"
-                elif key == 'staff_productivity':
-                    text = f"{value:.1f}"
-                else:
-                    text = f"{value:.1f}"
-                row_text.append(text)
-
-            z_values.append(row_status)
-            text_values.append(row_text)
-
-        heatmap_fig = go.Figure(
-            data=go.Heatmap(
-                z=z_values,
-                x=comparison_df['Country'],
-                y=[label for _, label in heatmap_metrics],
-                text=text_values,
-                texttemplate="%{text}",
-                colorscale=[
-                    [0.0, COLORS['poor']],
-                    [0.5, COLORS['acceptable']],
-                    [1.0, COLORS['good']]
-                ],
-                zmin=0,
-                zmax=2,
-                hovertemplate="<b>%{y}</b><br>Country: %{x}<br>Value: %{text}<extra></extra>"
-            )
-        )
-
-        heatmap_fig.update_layout(
-            height=420,
-            margin=dict(l=80, r=40, t=60, b=60),
-            title="KPI Status Matrix (Good → Green, Acceptable → Amber, Needs Attention → Red)",
-            xaxis=dict(title="Country"),
-            yaxis=dict(title="Key KPIs")
-        )
-
-        st.plotly_chart(heatmap_fig, width='stretch')
-        st.caption("Color-coded KPI matrix helps quickly identify top performers and areas that need attention.")
-    else:
-        comparison_df = pd.DataFrame(columns=['Country'])
-    
     st.markdown("---")
     
-    # Trend Analysis Section
-    st.header("📈 Trends Over Time (2020-2024)")
-    
-    # Prepare trend data
-    w_access = data_filtered['w_access']
-    finance = data_filtered['finance']
-    
-    # Water coverage trend by year
-    coverage_trend = w_access.groupby('year').agg({
-        'safely_managed': 'sum',
-        'basic': 'sum',
-        'popn_total': 'sum'
-    }).reset_index()
-    coverage_trend['water_coverage'] = (
-        (coverage_trend['safely_managed'] + coverage_trend['basic']) / 
-        coverage_trend['popn_total'] * 100
-    )
-    
-    # OCCR trend by year
-    occr_trend = finance.groupby('year').agg({
-        'sewer_revenue': 'sum',
-        'opex': 'sum'
-    }).reset_index()
-    occr_trend['occr'] = (occr_trend['sewer_revenue'] / occr_trend['opex']) * 100
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        fig = create_trend_line(
-            coverage_trend,
-            'year',
-            'water_coverage',
-            'Water Coverage Trend',
-            color=COLORS['primary'],
-            benchmark=100
-        )
-        st.plotly_chart(fig, width='stretch')
-    
-    with col2:
-        fig = create_trend_line(
-            occr_trend,
-            'year',
-            'occr',
-            'OCCR Trend',
-            color=COLORS['good'],
-            benchmark=110
-        )
-        st.plotly_chart(fig, width='stretch')
-    
-    st.markdown("---")
-    
-    # Country Comparison Section
-    st.header("🌍 Cross-Country Comparison")
-    
-    if comparison_df.empty:
-        st.info("No country-level KPIs to compare for the selected filters.")
-        countries = []
-    else:
-        display_columns = ['Country'] + list(kpi_column_map.values())
-        comparison_df = comparison_df.reindex(columns=display_columns).fillna(0)
-
-    st.dataframe(
-        comparison_df.set_index('Country').style.background_gradient(
-            cmap='RdYlGn',
-            subset=['Water Coverage (%)', 'Sanitation Coverage (%)', 'OCCR (%)', 'Collection Efficiency (%)', 'Metering Ratio (%)']
-        ),
-        width='stretch'
-    )
-
-    countries = comparison_df['Country'].tolist()
-    
-    # Radar chart for multi-dimensional comparison
-    if countries:
-        fig = go.Figure()
-        
-        categories = ['Water Coverage', 'Sanitation Coverage', 'OCCR', 'Collection Efficiency']
-        
-        for _, row in comparison_df.iterrows():
-            fig.add_trace(go.Scatterpolar(
-                r=[
-                    row['Water Coverage (%)'],
-                    row['Sanitation Coverage (%)'],
-                    row['OCCR (%)'],
-                    row['Collection Efficiency (%)']
-                ],
-                theta=categories,
-                fill='toself',
-                name=row['Country'],
-                line_color=COLORS['countries'].get(row['Country'], COLORS['primary'])
-            ))
-        
-        fig.update_layout(
-            polar=dict(
-                radialaxis=dict(
-                    visible=True,
-                    range=[0, 120]
-                )
-            ),
-            title="Multi-Dimensional Country Comparison",
-            height=500
-        )
-        
-        st.plotly_chart(fig, width='stretch')
-    
-    st.markdown("---")
-    
-    # Performance Highlights
-    st.header("🏆 Performance Highlights")
-    
-    col1, col2 = st.columns(2)
-    
-    if comparison_df.empty:
-        with col1:
-            st.info("No performance highlights available for the selected filters.")
-        with col2:
-            st.info("Adjust filters to review country performance rankings.")
-    else:
-        with col1:
-            st.subheader("✅ Top Performers")
-            
-            top_coverage = comparison_df.nlargest(3, 'Water Coverage (%)')
-            st.markdown("**🥇 Best Water Coverage:**")
-            for _, row in top_coverage.iterrows():
-                st.markdown(f"- **{row['Country']}**: {row['Water Coverage (%)']:.1f}%")
-            
-            top_occr = comparison_df.nlargest(3, 'OCCR (%)')
-            st.markdown("**💰 Best Cost Recovery (OCCR):**")
-            for _, row in top_occr.iterrows():
-                st.markdown(f"- **{row['Country']}**: {row['OCCR (%)']:.1f}%")
-
-            top_collection = comparison_df.nlargest(3, 'Collection Efficiency (%)')
-            st.markdown("**💵 Highest Collection Efficiency:**")
-            for _, row in top_collection.iterrows():
-                st.markdown(f"- **{row['Country']}**: {row['Collection Efficiency (%)']:.1f}%")
-        
-        with col2:
-            st.subheader("⚠️ Areas Needing Attention")
-            
-            bottom_coverage = comparison_df.nsmallest(3, 'Water Coverage (%)')
-            st.markdown("**💧 Lowest Water Coverage:**")
-            for _, row in bottom_coverage.iterrows():
-                st.markdown(f"- **{row['Country']}**: {row['Water Coverage (%)']:.1f}%")
-            
-            top_nrw = comparison_df.nlargest(3, 'NRW (%)')
-            st.markdown("**💸 Highest Non-Revenue Water:**")
-            for _, row in top_nrw.iterrows():
-                st.markdown(f"- **{row['Country']}**: {row['NRW (%)']:.1f}%")
-
-            high_personnel = comparison_df.nlargest(3, 'Personnel Cost % of O&M')
-            st.markdown("**👥 Highest Personnel Cost Share:**")
-            for _, row in high_personnel.iterrows():
-                st.markdown(f"- **{row['Country']}**: {row['Personnel Cost % of O&M']:.1f}%")
-    
-    st.markdown("---")
-    
-    # Key Insights
+    # --- Key Insights Section (DYNAMICALLY GENERATED) ---
     st.header("💡 Key Insights")
     
-    st.info(
-        """
-    **Descriptive Insights:**
-    - Average water coverage across selected filters: **{water_cov:.1f}%** (Target: 100%)
-    - Average sanitation coverage: **{san_cov:.1f}%** (Target: 100%)
-    - Average non-revenue water: **{nrw:.1f}%** (Benchmark: ≤25%)
-    - Average hours of supply: **{service_hours:.1f} hrs/day** (Benchmark: ≥20 hrs)
-    - Staff productivity averages **{staff_prod:.1f} staff/1k connections** (Benchmark: ≤7)
-    - Personnel costs represent **{personnel:.1f}%** of O&M spend (Target: ≤35%)
-    
-    **Diagnostic Insights:**
-    - Countries with higher metering ratios consistently realize stronger revenue collection efficiency.
-    - Persistent high NRW correlates with lower OCCR, eroding cost recovery.
-    - Elevated personnel cost shares often coincide with staff productivity above the 7 staff/1k connections benchmark.
-    """.format(
-            water_cov=summary_kpis['water_coverage']['value'],
-            san_cov=summary_kpis['sanitation_coverage']['value'],
-            nrw=summary_kpis['nrw']['value'],
-            service_hours=summary_kpis['service_hours']['value'],
-            staff_prod=summary_kpis['staff_productivity']['value'],
-            personnel=summary_kpis['personnel_cost_ratio']['value'],
+    # --- DYNAMIC AI INSIGHTS GENERATION ---
+    with st.spinner("Running AI Diagnostic Analysis..."):
+        ai_insights_markdown = get_ai_insights(summary_kpis, country_kpis)
+
+    if ai_insights_markdown:
+        st.info(ai_insights_markdown)
+    else:
+        # Fallback to a simple static summary if AI generation fails or is disabled
+        kpis = summary_kpis
+        st.info(
+            """
+        **Descriptive Insights (Static Fallback):**
+        - Average NRW: **{nrw:.1f}%** (Benchmark: ≤25%)
+        - Cost Recovery Ratio: **{cost_recovery:.1f}%** (Target: ≥100%)
+        
+        **Diagnostic Insights (Static Fallback):**
+        - Focus is needed on improving both operational efficiency (NRW) and financial sustainability (Cost Recovery).
+        """.format(
+                nrw=kpis.get('nrw', {}).get('value', 0),
+                cost_recovery=kpis.get('cost_recovery_ratio', {}).get('value', 0),
+            )
         )
+    # --- END DYNAMIC AI INSIGHTS GENERATION ---
+    
+    # --- 2. AI Chat Assistant Implementation (FIXED VISUAL FLOW) ---
+    
+    st.markdown("---")
+    st.subheader("💬 AI Data Assistant")
+
+    if not client:
+        st.warning("The AI Assistant is currently disabled. Please ensure the 'google-genai' library is installed and 'GEMINI_API_KEY' is set in your .streamlit/secrets.toml.")
+        return # Stop chat functionality if client failed to initialize
+
+    # Check context change
+    system_prompt = build_system_prompt(summary_kpis, country_kpis)
+    
+    context_changed = (
+        "chat_session" not in st.session_state
+        or st.session_state.get("chat_session") is None
+        or st.session_state.get("chat_system_prompt") != system_prompt
     )
 
+    if context_changed:
+        # Initialize a new session and capture the system prompt
+        with st.spinner("Initializing AI context..."):
+            st.session_state.chat_session, st.session_state.chat_system_prompt = get_chat_session(system_prompt)
+            st.session_state.messages = [] # Reset history for new context
+
+    chat = st.session_state.chat_session
+
+    if chat:
+        # --- PHASE 0: Suggested Prompts and Welcome Message ---
+
+        # If messages history is empty, add welcome message
+        # --- START: UPDATED AND FIXED WELCOME MESSAGE (Lines 420-431) ---
+        if not st.session_state.messages:
+            st.session_state.messages.append(
+                {"role": "assistant", 
+                 "content": """
+Hello! I'm your **AI Data Assistant** for this dashboard. 
+I can analyze all current KPI data, explain correlations, and help you navigate the system. 
+                 
+Feel free to ask me:
+1. **Data Questions:** "What is the Cost Recovery Ratio?"
+2. **Diagnostic Questions:** "Why is our NRW a financial risk?"
+3. **System Help:** "Where can I find the country-level comparison charts?"
+                 
+Start by clicking one of the suggested prompts below!
+"""
+                }
+            )
+        # --- END: UPDATED AND FIXED WELCOME MESSAGE ---
+            
+        # Suggested prompts updated to reflect the new KPI names/focus (Lines 433-437)
+        suggested_prompts = [
+            "What is the biggest operational challenge (NRW)?",
+            "How does low Revenue Collection affect profit/loss?",
+            "Where can I find the Service Continuity trend?",
+        ]
+
+        # Use columns for horizontal layout of buttons
+        cols = st.columns(len(suggested_prompts))
+        for col, prompt_text in zip(cols, suggested_prompts):
+            if col.button(prompt_text, use_container_width=True):
+                st.session_state.input_prompt = prompt_text
+                st.rerun()
+                
+        
+        # Determine if we are waiting for an AI response
+        is_waiting_for_response = (
+            st.session_state.messages and st.session_state.messages[-1]["role"] == "user"
+        )
+        
+        # --- 2b. Display Chat History (Fixed Height) ---
+        with st.container(height=400): 
+            for message in st.session_state.messages:
+                avatar = "🤖" if message["role"] == "assistant" else "👤"
+                with st.chat_message(message["role"], avatar=avatar):
+                    st.markdown(message["content"])
+
+        # --- Export Dialog Feature ---
+        export_col, = st.columns([1])
+        with export_col:
+            if st.session_state.messages:
+                dialog_content = ""
+                for msg in st.session_state.messages:
+                    role = "USER" if msg["role"] == "user" else "ASSISTANT"
+                    dialog_content += f"**{role}:**\n{msg['content']}\n\n---\n\n"
+
+                st.download_button(
+                    label="📥 Export Chat Dialog (TXT)",
+                    data=dialog_content,
+                    file_name="ai_data_assistant_dialog.txt",
+                    mime="text/plain",
+                    type="secondary"
+                )
+        st.markdown("---") 
+
+        # --- Input Handling and Reruns ---
+        
+        prompt = None 
+        submitted_prompt = None
+
+        # Handle suggested button prompt 
+        if "input_prompt" in st.session_state and st.session_state.input_prompt:
+            prompt = st.session_state.input_prompt
+            del st.session_state.input_prompt
+        # Only show the chat input if we are NOT waiting for a response (This fixes the input locking)
+        elif not is_waiting_for_response:
+            submitted_prompt = st.chat_input("Ask me about coverage, costs, or efficiency...")
+            if submitted_prompt:
+                prompt = submitted_prompt
+
+
+        # --- PHASE 1: Capture Prompt and Trigger Rerun for Display ---
+        if prompt:
+            # 1. Add user message to history
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            # 2. Rerun the app to immediately display the user's message 
+            st.rerun() 
+
+
+        # --- PHASE 2: GENERATING RESPONSE BLOCK ---
+        if is_waiting_for_response:
+            
+            current_prompt = st.session_state.messages[-1]["content"]
+
+            # Display the AI's response in a dedicated chat message block
+            with st.chat_message("assistant", avatar="🤖"):
+                with st.spinner(f"Analyzing data for '{current_prompt[:30]}...'"):
+                    
+                    full_response = ""
+                    try:
+                        chat = st.session_state.chat_session
+                        response_stream = chat.send_message_stream(current_prompt)
+                        
+                        # Create an empty element to stream the output into
+                        response_container = st.empty()
+                        
+                        for chunk in response_stream:
+                            if chunk.text:
+                                full_response += chunk.text
+                                # Update the container to show the progress
+                                response_container.markdown(full_response)
+                        
+                    except APIError as e:
+                        full_response = f"An API Error occurred: {e.message}. Check your API key and usage limits."
+                        st.error(full_response)
+                    except Exception as e:
+                        full_response = f"An unexpected error occurred: {e}"
+                        st.exception(e)
+
+            # 3. Add final, clean AI response to history
+            st.session_state.messages.append({"role": "assistant", "content": full_response})
+            # Force a final rerun to clear the streaming placeholder and redraw the full history
+            st.rerun()

@@ -329,7 +329,7 @@ def render_sidebar_landing():
         </div>
         """, unsafe_allow_html=True)
         
-        st.info("👆 Select a country above to explore the dashboard")
+        st.info("👉 Select a country on the right to explore the dashboard")
         
         # About section
         with st.expander("ℹ️ About"):
@@ -349,7 +349,7 @@ def render_sidebar_landing():
             - Financial reports
             - National accounts
             
-            **Support:** dashboard@washservices.org
+            **Support:** youremail@yourcompany.org
             """)
 
 

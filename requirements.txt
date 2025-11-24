@@ -4,6 +4,9 @@
 # Core framework
 streamlit>=1.28.0
 
+# LLM integration (New Addition!)
+google-genai>=1.0.0
+
 # Data manipulation
 pandas>=2.0.0
 numpy>=1.24.0

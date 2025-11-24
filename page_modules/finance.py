@@ -9,8 +9,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
-from utils.kpi_calculator import calculate_occr, calculate_collection_efficiency
-from utils.visualizations import create_occr_dashboard, create_waterfall_chart, COLORS
+from utils.kpi_calculator import calculate_cost_recovery_ratio, calculate_collection_efficiency
+from utils.visualizations import create_cost_recovery_dashboard, create_waterfall_chart, COLORS
 from utils.currency_config import format_currency_multi_country, get_currency_label
 
 
@@ -78,7 +78,7 @@ def render_finance_page(data, countries_filter, date_range=None):
         )
     
     with col4:
-        occr = calculate_occr(total_revenue, total_opex)
+        occr = calculate_cost_recovery_ratio(total_revenue, total_opex)
         delta_occr = occr - 110
         st.metric(
             "OCCR",
@@ -129,7 +129,7 @@ def render_finance_page(data, countries_filter, date_range=None):
     st.header("📈 OCCR Performance Dashboard")
     
     # Create comprehensive OCCR dashboard
-    fig = create_occr_dashboard(finance_df)
+    fig = create_cost_recovery_dashboard(finance_df)
     st.plotly_chart(fig, width='stretch')
     
     st.markdown("---")

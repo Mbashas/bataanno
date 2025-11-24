@@ -15,7 +15,7 @@ from .data_loader import (
 )
 
 from .kpi_calculator import (
-    calculate_occr,
+    calculate_cost_recovery_ratio,  # <-- FIX 1: Renamed from calculate_occr
     calculate_nrw,
     calculate_collection_efficiency,
     calculate_water_coverage,
@@ -33,7 +33,7 @@ from .visualizations import (
     create_waterfall_chart,
     create_heatmap,
     create_scatter_plot,
-    create_occr_dashboard,
+    create_cost_recovery_dashboard, # <-- You already fixed this import
     COLORS,
     BENCHMARKS
 )
@@ -47,7 +47,7 @@ __all__ = [
     'load_finance_data',
     'load_national_data',
     'load_all_data',
-    'calculate_occr',
+    'calculate_cost_recovery_ratio',  # <-- FIX 2: Updated in __all__
     'calculate_nrw',
     'calculate_collection_efficiency',
     'calculate_water_coverage',
@@ -62,8 +62,7 @@ __all__ = [
     'create_waterfall_chart',
     'create_heatmap',
     'create_scatter_plot',
-    'create_occr_dashboard',
+    'create_cost_recovery_dashboard', # <-- FIX 3: Updated in __all__
     'COLORS',
     'BENCHMARKS'
 ]
-

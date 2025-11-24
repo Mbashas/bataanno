@@ -102,13 +102,28 @@ def render_home_page(data, countries_filter, date_range=None):
         ('staff_productivity', "🧑‍🔧 Staff Productivity"),
     ]
 
-    row_cols = None
+    # --- START OF CORRECTED BLOCK ---
+    
+    # Initialize row_cols to an empty list.
+    row_cols = [] 
+
     for idx, (key, title) in enumerate(kpi_layout):
         if key not in kpis:
             continue
 
-        if idx % 5 == 0:
+        col_index = idx % 5 
+
+        # If it's the start of a new row (index 0, 5, 10, etc.), create 5 columns.
+        if col_index == 0:
+            # This is the ONLY place where row_cols is assigned st.columns(5)
+            # This ensures that row_cols is a list of 5 elements before it's used.
             row_cols = st.columns(5)
+            
+        # The list row_cols is now guaranteed to hold 5 columns if we continue.
+        # Check to prevent an IndexError if kpis somehow had fewer than 5 items
+        # AND was missing keys that should have been skipped (a very unlikely edge case).
+        if col_index >= len(row_cols):
+             continue
 
         metric = kpis[key]
         inverse = metric.get('inverse', False)
@@ -116,13 +131,15 @@ def render_home_page(data, countries_filter, date_range=None):
         value_label = format_metric_value(metric)
         target_label = format_metric_target(key, metric)
 
-        with row_cols[idx % 5]:
+        # Access the column safely using the index (0 to 4)
+        with row_cols[col_index]: 
             render_kpi_card(
                 title,
                 value_label,
                 target_label,
                 color
             )
+    # --- END OF CORRECTED BLOCK ---
     
     st.markdown("---")
     
@@ -284,4 +301,3 @@ def format_metric_target(metric_key, metric):
     if unit:
         return f"Target: ≥{benchmark}{unit}"
     return f"Target: ≥{benchmark}"
-
