@@ -41,16 +41,16 @@ A comprehensive Streamlit dashboard for analyzing water and sanitation service p
    - Revenue collection efficiency
    - Financial waterfall analysis
    - Cost structure and staffing metrics
-   - **NEW**: Customer payment behavior by zone
-   - **NEW**: Payment risk dashboard (High/Medium/Low Risk customers)
-   - **NEW**: Commercial vs. Physical NRW breakdown
+   - Customer payment behavior by zone
+   - Payment risk dashboard (High/Medium/Low Risk customers)
+   - Commercial vs. Physical NRW breakdown
 
-### Four Types of Insights
-
-- **Descriptive**: What happened? (Current state KPIs)
-- **Diagnostic**: Why did it happen? (Root cause analysis)
-- **Predictive**: What will happen? (Trend projections)
-- **Prescriptive**: What should be done? (Actionable recommendations)
+### Enhanced Visual Experience
+- **Professional Water-Themed Design**: Gradient backgrounds and modern UI
+- **Country Flags & Icons**: Visual identifiers for Uganda (🇺🇬), Cameroon (🇨🇲), Malawi (🇲🇼), Lesotho (🇱🇸)
+- **Zone-Level Analysis**: Detailed performance breakdown by geographic zones
+- **Interactive Maps**: Choropleth maps for regional performance comparison
+- **Responsive Design**: Optimized for utility managers' workflow
 
 ## 🚀 Installation
 
@@ -63,7 +63,7 @@ A comprehensive Streamlit dashboard for analyzing water and sanitation service p
 
 ```bash
 git clone <repository-url>
-cd DASHADI
+cd water_utility_dashboard
 ```
 
 ### Step 2: Create Virtual Environment (Recommended)
@@ -84,21 +84,29 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Step 4: Verify Data Files
+### Step 4: Set Up Data Files
 
 Ensure all required CSV files are in the `Data/` directory:
 
 ```
 Data/
-├── production.csv
-├── w_service.csv
-├── s_service.csv
-├── w_access.csv
-├── s_access.csv
-├── all_fin_service.csv
-├── all_national.csv
-└── billing.csv (NEW - 720,119 customer records)
+├── production.csv          # 7,308 rows - Daily production data
+├── w_service.csv           # 1,080 rows - Water service metrics
+├── s_service.csv           # 1,080 rows - Sanitation service metrics
+├── w_access.csv            # 90 rows - Water access indicators
+├── s_access.csv            # 90 rows - Sanitation access indicators
+├── finance.csv             # 240 rows - Financial performance
+├── national.csv            # 20 rows - National accounts data
+└── billing.csv             # 720,119 rows - Customer billing records
 ```
+
+### Step 5: Add Visual Assets (Optional)
+
+Create the assets directory for enhanced visuals:
+```bash
+mkdir -p assets/images assets/styles
+```
+Add water-themed background images and custom CSS for optimal visual experience.
 
 ## 🎯 Usage
 
@@ -110,196 +118,221 @@ streamlit run app.py
 
 The dashboard will open in your default web browser at `http://localhost:8501`
 
-### Navigation
+### Navigation Structure
 
-1. **Sidebar Navigation**: Use the radio buttons to switch between domains
-2. **Filters**: Select countries and date ranges in the sidebar
-3. **Interactive Charts**: Hover over visualizations for detailed information
-4. **Export Data**: Visit the Reports page to download CSV files
+1. **Landing Page (app.py)**: Executive overview with KPIs, maps, and country comparison
+2. **Country Pages**: Detailed analysis for each country with tabbed interfaces:
+   - **Tab 1 - Access**: Service coverage and equity analysis
+   - **Tab 2 - Billing/Finance**: Revenue, collections, and financial sustainability
+   - **Tab 3 - Production**: Water production and service hours
+   - **Tab 4 - Service**: Water quality and operational metrics
 
 ### Quick Start Guide
 
-1. Start at the **Home** page to see overall KPIs
-2. Navigate to **Overview Dashboard** for cross-country comparison
-3. Dive into specific domains (Production, Service, Access, Finance) for detailed analysis
-4. Generate **Reports** with actionable recommendations
+1. **Start at Landing Page**: View overall KPIs and regional performance maps
+2. **Explore Country Details**: Click country buttons for zone-level analysis
+3. **Use Interactive Filters**: Filter by country, zone, and date ranges
+4. **Export Insights**: Generate reports with actionable recommendations
 
-## 📊 Dashboard Structure
+## 📊 Updated Dashboard Structure
 
 ```
-DASHADI/
-├── app.py                      # Main application file
-├── requirements.txt            # Python dependencies
-├── README.md                   # This file
-├── Data/                       # Data directory (CSV files)
-│   ├── production.csv
-│   ├── w_service.csv
-│   ├── s_service.csv
-│   ├── w_access.csv
-│   ├── s_access.csv
-│   ├── all_fin_service.csv
-│   ├── all_national.csv
-│   └── billing.csv            # NEW: Customer-level billing data
-├── utils/                      # Utility modules
-│   ├── data_loader.py         # Data loading and caching
-│   ├── kpi_calculator.py      # KPI calculation formulas
-│   └── visualizations.py      # Reusable chart functions
-└── page_modules/               # Page modules
-    ├── home.py                # Landing page
-    ├── overview.py            # Overview dashboard
-    ├── production.py          # Production domain
-    ├── service.py             # Service domain
-    ├── access.py              # Access domain
-    ├── finance.py             # Finance domain
-    └── reports.py             # Reports and exports
+water_utility_dashboard/
+├── app.py                          # Main landing page (Executive Overview)
+├── pages/                          # Country-specific detailed analysis
+│   ├── 1_🇺🇬_Uganda.py              # Uganda country page
+│   ├── 2_🇨🇲_Cameroon.py            # Cameroon country page
+│   ├── 3_🇲🇼_Malawi.py              # Malawi country page
+│   └── 4_🇱🇸_Lesotho.py             # Lesotho country page
+├── utils/                          # Utility modules
+│   ├── data_loader.py              # Data loading, caching, and preprocessing
+│   └── visualization.py            # Custom visualization functions
+├── assets/                         # Visual assets
+│   ├── images/
+│   │   ├── background.jpg          # Water-themed background
+│   │   └── logo.png               # Utility dashboard logo
+│   └── styles/
+│       └── custom.css             # Enhanced styling and themes
+├── Data/                           # All CSV datasets
+│   ├── production.csv              # Daily production records
+│   ├── w_service.csv               # Water service metrics
+│   ├── s_service.csv               # Sanitation service metrics
+│   ├── w_access.csv                # Water access data
+│   ├── s_access.csv                # Sanitation access data
+│   ├── finance.csv                 # Financial performance
+│   ├── national.csv                # National accounts
+│   └── billing.csv                 # Customer billing data
+├── requirements.txt                # Python dependencies
+├── config.py                       # Configuration settings
+└── README.md                       # This documentation
 ```
 
-## 📁 Data Requirements
+## 📁 Complete Data Requirements
 
-### File Formats
+### Dataset Specifications
 
-All data files should be in CSV format with the following structures:
-
-#### 1. production.csv (Daily, by source)
+#### 1. production.csv (7,308 rows)
 - `date_YYMMDD`: Date in YYYY/MM/DD format
 - `source`: Water extraction source name
 - `production_m3`: Production volume in cubic meters
 - `service_hours`: Hours of service per day
-- `country`: Country name
+- `country`, `zone`: Geographic information
+- `year`, `month`: Temporal dimensions
 
-#### 2. billing.csv (Monthly, by customer) **NEW**
+#### 2. w_service.csv (1,080 rows)
+- `country`, `zone`, `date_MMYY`: Geographic and temporal data
+- `customers`, `tests_chlorine`, `tests_ecoli`: Service metrics
+- `tests_conducted_chlorine`, `test_conducted_ecoli`: Testing volume
+- `test_passed_chlorine`, `tests_passed_ecoli`: Compliance results
+- `w_supplied`, `total_consumption`, `metered`: Supply and consumption
+- `ww_capacity`, `supply_hours`: Capacity and service levels
+
+#### 3. s_service.csv (1,080 rows)
+- `country`, `zone`, `date_MMYY`: Location and time
+- `customers`, `sewer_connections`, `public_toilets`: Service infrastructure
+- `workforce`, `f_workforce`: Staffing information
+- `ww_collected`, `treatment_quality`, `ww_reused`: Sanitation metrics
+- `w_supplied`, `hh_emptied`, `fs_treated`, `fs_reused`: Service delivery
+
+#### 4. w_access.csv (90 rows)
+- `country`, `zone`, `date_YY`: Geographic and annual data
+- `safely_managed`, `access_rate`: JMP service ladder
+- `basic`, `basic_pct`, `limited`, `limited_pct`: Service levels
+- `unimproved`, `unimproved_pct`, `surface_water`, `surface_water_pct`: Access gaps
+- `population`, `households`, `municipal_coverage`: Demographic coverage
+
+#### 5. s_access.csv (90 rows)
+- `country`, `zone`, `date_YY`: Location and time
+- `safely_managed`, `access_rate`: Sanitation access
+- `basic`, `basic_pct`, `limited`, `limited_pct`: Service levels
+- `unimproved`, `unimproved_pct`, `open_def`, `open_def_pct`: Access challenges
+- `population`, `households`: Demographic data
+
+#### 6. finance.csv (240 rows)
+- `country`, `city`, `date_MMYY`: Geographic and temporal
+- `sewer_length`, `complaints`, `resolved`, `blocks`: Infrastructure and service
+- `sewer_billed`, `collection_rate`, `expenses`: Financial metrics
+- `san_staff`, `w_staff`, `propoor_popn`: Staffing and equity
+
+#### 7. national.csv (20 rows)
+- `country`, `city`, `date_YY`: National level data
+- `budget_allocated`, `san_allocation`, `water_investment`: Budget information
+- `staff_cost`, `gdp`, `trained_staff`: Economic and HR metrics
+- `complaint_resolution`, `registered_wtps`, `inspected_wtps`: Regulatory data
+- `total_service_providers`, `licensed_service_providers`: Sector overview
+- `asset_health`, `staff_training_budget`: System capacity
+
+#### 8. billing.csv (720,119 rows)
 - `customer_id`: Unique customer identifier
-- `date`: Date in YYYY-MM-DD format
-- `consumption_m3`: Water consumption in cubic meters
-- `billed`: Amount billed to customer
-- `paid`: Amount paid by customer
-- `country`, `zone`, `source`: Geographic and source information
-
-#### 3. w_service.csv (Monthly, by zone)
-- `country`, `zone`, `date_MMYY` (MMM/YY format)
-- `households`, `tests_chlorine`, `tests_ecoli`
-- `tests_conducted_chlorine`, `test_conducted_ecoli`
-- `test_passed_chlorine`, `tests_passed_ecoli`
-- `w_supplied`, `total_consumption`, `metered`
-- `ww_capacity`
-
-#### 4. s_service.csv (Monthly, by zone)
-- `country`, `zone`, `date_MMYY`
-- `households`, `sewer_connections`, `public_toilets`
-- `workforce`, `f_workforce`
-- `ww_collected`, `ww_treated`, `ww_reused`
-- `w_supplied`, `hh_emptied`, `fs_treated`, `fs_reused`
-
-#### 5. w_access.csv (Annual, by zone)
-- `country`, `zone`, `date_YY` (YYYY format)
-- `safely_managed`, `safely_managed_pct`
-- `basic`, `basic_pct`
-- `limited`, `limited_pct`
-- `unimproved`, `unimproved_pct`
-- `surface_water`, `surface_water_pct`
-- `popn_total`, `households`, `municipal_coverage`
-
-#### 6. s_access.csv (Annual, by zone)
-- `country`, `zone`, `date_YY`
-- `safely_managed`, `safely_managed_pct`
-- `basic`, `basic_pct`
-- `limited`, `limited_pct`
-- `unimproved`, `unimproved_pct`
-- `open_def`, `open_def_pct`
-- `popn_total`, `households`
-
-#### 7. all_fin_service.csv (Monthly, by city)
-- `country`, `city`, `date_MMYY`
-- `sewer_length`, `complaints`, `resolved`, `blocks`
-- `sewer_billed`, `sewer_revenue`, `opex`
-- `san_staff`, `w_staff`, `propoor_popn`
-
-#### 8. all_national.csv (Annual, national accounts)
-- `country`, `city`, `date_YY`
-- `budget_allocated`, `san_allocation`, `wat_allocation`
-- `staff_cost`, `water_resources`, `trained_staff`
-- `complaint_resolution`, `registered_wtps`, `inspected_wtps`
-- `total_service_providers`, `licensed_service_providers`
-- `asset_health`, `staff_training_budget`
+- `date`: Billing date
+- `consumption_m3`: Water consumption volume
+- `billed`, `paid`: Financial transactions
+- `country`, `zone`, `source`: Geographic and system data
+- `year`, `month`: Temporal dimensions
 
 ## 📈 Key Performance Indicators
 
-### Sector Benchmarks
+### Executive Dashboard KPIs
 
-| KPI | Benchmark | Formula |
-|-----|-----------|---------|
-| Water Coverage | 100% | (Safely Managed + Basic) / Total Population × 100 |
-| Sanitation Coverage | 100% | (Safely Managed + Basic) / Total Population × 100 |
-| Non-Revenue Water (NRW) | ≤25% | (Production - Billed Volume) / Production × 100 |
-| Water Quality Compliance | ≥95% | Tests Passed / Tests Conducted × 100 |
-| Service Hours | ≥20 hrs/day | Average hours of supply per day |
-| Revenue Collection Efficiency | ≥95% | Revenue Collected / Total Billed × 100 |
-| OCCR | ≥110% | Revenue / Operating Expenses × 100 |
-| Metering Ratio | ≥95% | Metered Consumption / Total Consumption × 100 |
-| Staff Productivity | ≤7 staff/1000 connections | Staff Count / Connections × 1000 |
+| Category | KPI | Benchmark | Description |
+|----------|-----|-----------|-------------|
+| **Coverage** | Water Access Rate | ≥95% | Population with improved water sources |
+| | Sanitation Access Rate | ≥95% | Population with improved sanitation |
+| | Safely Managed Services | ≥80% | JMP highest service level |
+| **Operations** | Water Production | Trend | Total m³ produced |
+| | Service Hours | ≥20 hrs/day | Average daily supply |
+| | Water Quality Compliance | ≥95% | Chlorine and E.coli tests passed |
+| **Financial** | Collection Rate | ≥90% | Revenue collected vs billed |
+| | Cost Recovery | ≥100% | Revenue vs operating expenses |
+| | Metering Ratio | ≥85% | Consumption that is metered |
 
-## 🏗️ Technical Architecture
+### Zone-Level Analysis
+- **Zone Performance Ranking**: Top and bottom performing zones
+- **Geographic Equity**: Access disparities across zones
+- **Service Quality Variation**: Water quality and reliability by zone
+- **Financial Performance**: Collection rates and revenue by zone
+
+## 🏗️ Enhanced Technical Architecture
 
 ### Technology Stack
 
 - **Frontend Framework**: Streamlit 1.28+
 - **Data Processing**: Pandas 2.0+, NumPy 1.24+
-- **Visualization**: Plotly 5.17+
+- **Visualization**: Plotly 5.17+, Chart.js
 - **Caching**: Streamlit's built-in caching (@st.cache_data)
+- **Styling**: Custom CSS with water-themed design
 
-### Design Principles
+### New Features
 
-1. **KISS Principle**: Simple, intuitive interfaces for non-technical users
-2. **Modular Architecture**: Separated concerns (data, calculations, visualizations, pages)
-3. **Performance Optimization**: Aggressive caching for sub-3-second load times
-4. **Accessibility**: Color-blind friendly palettes, clear labels, tooltips
+1. **Zone-Aware Analysis**: All visualizations now support zone-level drilling
+2. **Enhanced Maps**: Interactive choropleth maps for regional comparison
+3. **Country Flags**: Visual identifiers for better navigation
+4. **Professional UI**: Gradient backgrounds, hover effects, modern cards
+5. **Responsive Design**: Mobile-friendly interface for field use
 
-### Color Palette (Color-Blind Friendly)
+### Performance Optimizations
 
-- 🟢 Green (#2ecc71): Good performance
-- 🟠 Amber (#f39c12): Acceptable performance
-- 🔴 Red (#e74c3c): Poor performance / needs attention
-- 🔵 Blue (#3498db): Primary color
-- 🟣 Purple (#9b59b6): Secondary color
+- **Smart Caching**: Data loader with TTL caching for sub-3-second loads
+- **Lazy Loading**: Visualizations load on demand
+- **Data Validation**: Comprehensive data quality checks
+- **Error Handling**: Graceful degradation for missing data
+
+## 🎨 Design System
+
+### Color Palette (Water-Themed)
+
+- **Primary Blue** (#1f77b4): Water, trust, reliability
+- **Success Green** (#2ecc71): Good performance, compliance
+- **Warning Amber** (#f39c12): Needs attention, medium risk
+- **Alert Red** (#e74c3c): Critical issues, poor performance
+- **Purple Gradient**: KPI cards and highlights
+
+### Typography
+
+- **Headers**: Bold, gradient text for emphasis
+- **Body**: Clean, readable fonts for data presentation
+- **Metrics**: Large, clear numbers for quick scanning
 
 ## 🤝 Contributing
 
-We welcome contributions! Please follow these guidelines:
+We welcome contributions from utility professionals and developers:
 
 1. **Fork the repository**
-2. **Create a feature branch** (`git checkout -b feature/YourFeature`)
-3. **Commit your changes** (`git commit -m 'Add YourFeature'`)
-4. **Push to the branch** (`git push origin feature/YourFeature`)
+2. **Create a feature branch** (`git checkout -b feature/zone-analysis`)
+3. **Commit your changes** (`git commit -m 'Add enhanced zone visualization'`)
+4. **Push to the branch** (`git push origin feature/zone-analysis`)
 5. **Open a Pull Request**
 
-### Code Style
+### Development Guidelines
 
 - Follow PEP 8 for Python code
-- Use meaningful variable names
-- Add docstrings to functions
-- Comment complex logic
+- Use type hints for function signatures
+- Add docstrings to all functions
+- Test with sample data before submitting
+- Update documentation for new features
 
 ## 📝 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 📧 Support
+## 📧 Support & Feedback
 
-For questions, issues, or feature requests:
+For technical support, data issues, or feature requests:
 
-- **Email**: dashboard@washservices.org
-- **Issues**: Open an issue on GitHub
-- **Documentation**: See inline help tooltips in the dashboard
+- **Utility Managers**: Contact your national water authority
+- **Technical Issues**: Open an issue on GitHub repository
+- **Feature Requests**: Use the GitHub discussions forum
+- **Documentation**: In-app tooltips and help sections
 
 ## 🙏 Acknowledgments
 
-- Data sources from national water utilities
-- JMP (WHO/UNICEF Joint Monitoring Programme) for access indicators
-- Utility managers across Uganda, Cameroon, Lesotho, and Malawi
+- National Water Authorities of Uganda, Cameroon, Malawi, and Lesotho
+- Utility managers and field staff providing operational data
+- JMP (WHO/UNICEF Joint Monitoring Programme) for service ladder frameworks
+- African Water Association for sector benchmarks and best practices
 
 ---
 
-**Built with ❤️ for better water services in Africa**
+**💧 Built for Sustainable Water Services in Africa | Version 2.0 🚀**
 
-Last Updated: November 2024 | Version 1.0.0
-
+*Last Updated: December 2024 | Enhanced with Zone-Level Analytics & Professional UI*

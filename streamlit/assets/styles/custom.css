@@ -1,0 +1,152 @@
+/* Custom CSS for Water Utility Dashboard */
+
+/* Main app background */
+.stApp {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Header styles */
+.main-header {
+    font-size: 2.8rem;
+    color: #1f77b4;
+    text-align: center;
+    margin-bottom: 2rem;
+    font-weight: bold;
+    background: linear-gradient(45deg, #1f77b4, #2ecc71);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+}
+
+/* KPI Cards */
+.kpi-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 1.5rem;
+    border-radius: 15px;
+    text-align: center;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    margin-bottom: 1rem;
+    color: white;
+    border: 1px solid #e0e0e0;
+    transition: transform 0.3s ease;
+}
+
+.kpi-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 20px rgba(0,0,0,0.15);
+}
+
+/* Section headers */
+.section-header {
+    background: linear-gradient(45deg, #1f77b4, #2ecc71);
+    color: white;
+    padding: 1rem;
+    border-radius: 10px;
+    margin: 2rem 0 1rem 0;
+    font-size: 1.4rem;
+    font-weight: bold;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* Zone cards */
+.zone-card {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 10px;
+    border-left: 5px solid #1f77b4;
+    margin: 0.5rem 0;
+    transition: all 0.3s ease;
+}
+
+.zone-card:hover {
+    background: #e9ecef;
+    transform: translateX(5px);
+}
+
+/* Country flags */
+.country-flag {
+    font-size: 1.5rem;
+    margin-right: 0.5rem;
+}
+
+/* Metric styling */
+[data-testid="metric-container"] {
+    background: rgba(255,255,255,0.9);
+    padding: 1rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Button styling */
+.stButton button {
+    background: linear-gradient(45deg, #1f77b4, #2ecc71);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.stButton button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* Tab styling */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 2rem;
+}
+
+.stTabs [data-baseweb="tab"] {
+    height: 50px;
+    white-space: pre-wrap;
+    background-color: #f0f2f6;
+    border-radius: 8px 8px 0px 0px;
+    gap: 1rem;
+    padding: 10px 16px;
+}
+
+.stTabs [aria-selected="true"] {
+    background-color: #1f77b4;
+    color: white;
+}
+
+/* Data warning boxes */
+.data-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 5px;
+    padding: 1rem;
+    margin: 1rem 0;
+    color: #856404;
+}
+
+/* Success messages */
+.success-message {
+    background-color: #d1edff;
+    border: 1px solid #b3d9ff;
+    border-radius: 5px;
+    padding: 1rem;
+    margin: 1rem 0;
+    color: #004085;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #1f77b4;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #1668a3;
+}

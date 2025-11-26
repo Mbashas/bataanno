@@ -5,540 +5,410 @@ Contains all formulas and calculations for dashboard KPIs
 
 import pandas as pd
 import numpy as np
+from typing import Dict, List, Optional, Tuple, Union, Any
+import logging
 
+logger = logging.getLogger(__name__)
 
-def calculate_occr(revenue, opex):
-    """
-    Calculate Operating Cost Coverage Ratio (OCCR)
-    Formula: (sewer_revenue ÷ opex) × 100
-    Benchmark: ≥110%
-    """
-    if opex == 0 or pd.isna(opex):
-        return 0
-    return (revenue / opex) * 100
+# KPI Benchmark definitions
+KPI_BENCHMARKS = {
+    'water_coverage': {'target': 100, 'unit': '%', 'inverse': False, 'description': 'Water Service Coverage'},
+    'sanitation_coverage': {'target': 100, 'unit': '%', 'inverse': False, 'description': 'Sanitation Service Coverage'},
+    'nrw': {'target': 25, 'unit': '%', 'inverse': True, 'description': 'Non-Revenue Water'},
+    'occr': {'target': 110, 'unit': '%', 'inverse': False, 'description': 'Operating Cost Coverage Ratio'},
+    'collection_efficiency': {'target': 95, 'unit': '%', 'inverse': False, 'description': 'Revenue Collection Efficiency'},
+    'water_quality': {'target': 95, 'unit': '%', 'inverse': False, 'description': 'Water Quality Compliance'},
+    'metering_ratio': {'target': 95, 'unit': '%', 'inverse': False, 'description': 'Water Metering Ratio'},
+    'staff_productivity': {'target': 7, 'unit': 'staff/1k', 'inverse': True, 'description': 'Staff Productivity'},
+    'service_hours': {'target': 20, 'unit': 'hrs/day', 'inverse': False, 'description': 'Daily Service Hours'},
+    'personnel_cost_ratio': {'target': 35, 'unit': '%', 'inverse': True, 'description': 'Personnel Cost Ratio'},
+    'complaint_resolution': {'target': 90, 'unit': '%', 'inverse': False, 'description': 'Complaint Resolution Rate'},
+    'ww_treatment_rate': {'target': 80, 'unit': '%', 'inverse': False, 'description': 'Wastewater Treatment Rate'}
+}
 
+def safe_divide(numerator: float, denominator: float, default: float = 0.0) -> float:
+    """Safely divide two numbers with zero division protection"""
+    if denominator == 0 or pd.isna(denominator) or pd.isna(numerator):
+        return default
+    return numerator / denominator
 
-def calculate_nrw(production, billed_volume):
-    """
-    Calculate Non-Revenue Water (NRW)
-    Formula: ((production_m3 - billed_volume) ÷ production_m3) × 100
-    Benchmark: ≤25%
-    """
-    if production == 0 or pd.isna(production):
-        return 0
-    return ((production - billed_volume) / production) * 100
+def calculate_water_coverage(safely_managed: float, basic: float, popn_total: float) -> float:
+    """Calculate Water Coverage % with safe handling"""
+    try:
+        if popn_total == 0 or pd.isna(popn_total):
+            return 0.0
+        served_population = safely_managed + basic
+        return (served_population / popn_total) * 100
+    except Exception as e:
+        logger.warning(f"Error calculating water coverage: {e}")
+        return 0.0
 
+def calculate_sanitation_coverage(safely_managed: float, basic: float, popn_total: float) -> float:
+    """Calculate Sanitation Coverage % with safe handling"""
+    try:
+        if popn_total == 0 or pd.isna(popn_total):
+            return 0.0
+        served_population = safely_managed + basic
+        return (served_population / popn_total) * 100
+    except Exception as e:
+        logger.warning(f"Error calculating sanitation coverage: {e}")
+        return 0.0
 
-def calculate_collection_efficiency(total_collection, total_billing):
-    """
-    Calculate Revenue Collection Efficiency
-    Formula: (total_collection ÷ total_billing) × 100
-    Benchmark: ≥95%
-    """
-    if total_billing == 0 or pd.isna(total_billing):
-        return 0
-    return (total_collection / total_billing) * 100
+def calculate_nrw(production: float, billed_volume: float) -> float:
+    """Calculate Non-Revenue Water % with safe handling"""
+    try:
+        if production == 0 or pd.isna(production):
+            return 0.0
+        losses = production - billed_volume
+        return (losses / production) * 100
+    except Exception as e:
+        logger.warning(f"Error calculating NRW: {e}")
+        return 0.0
 
+def calculate_occr(revenue: float, opex: float) -> float:
+    """Calculate Operating Cost Coverage Ratio with safe handling"""
+    try:
+        return safe_divide(revenue, opex, 0.0) * 100
+    except Exception as e:
+        logger.warning(f"Error calculating OCCR: {e}")
+        return 0.0
 
-def calculate_water_coverage(safely_managed, basic, popn_total):
-    """
-    Calculate Water Coverage %
-    Formula: ((safely_managed + basic) ÷ popn_total) × 100
-    Benchmark: 100%
-    """
-    if popn_total == 0 or pd.isna(popn_total):
-        return 0
-    return ((safely_managed + basic) / popn_total) * 100
+def calculate_collection_efficiency(total_collection: float, total_billing: float) -> float:
+    """Calculate Revenue Collection Efficiency with safe handling"""
+    try:
+        return safe_divide(total_collection, total_billing, 0.0) * 100
+    except Exception as e:
+        logger.warning(f"Error calculating collection efficiency: {e}")
+        return 0.0
 
+def calculate_metering_ratio(metered: float, total_consumption: float) -> float:
+    """Calculate Metering Ratio with safe handling"""
+    try:
+        return safe_divide(metered, total_consumption, 0.0) * 100
+    except Exception as e:
+        logger.warning(f"Error calculating metering ratio: {e}")
+        return 0.0
 
-def calculate_sanitation_coverage(safely_managed, basic, popn_total):
-    """
-    Calculate Sanitation Coverage %
-    Formula: ((safely_managed + basic) ÷ popn_total) × 100
-    Benchmark: 100%
-    """
-    if popn_total == 0 or pd.isna(popn_total):
-        return 0
-    return ((safely_managed + basic) / popn_total) * 100
+def calculate_water_quality_compliance(tests_passed: float, tests_conducted: float) -> float:
+    """Calculate Water Quality Compliance Rate with safe handling"""
+    try:
+        return safe_divide(tests_passed, tests_conducted, 0.0) * 100
+    except Exception as e:
+        logger.warning(f"Error calculating water quality compliance: {e}")
+        return 0.0
 
+def calculate_staff_productivity(staff: float, connections: float) -> float:
+    """Calculate Staff Productivity with safe handling"""
+    try:
+        if connections == 0 or pd.isna(connections):
+            return 0.0
+        return (staff / connections) * 1000
+    except Exception as e:
+        logger.warning(f"Error calculating staff productivity: {e}")
+        return 0.0
 
-def calculate_metering_ratio(metered, total_consumption):
-    """
-    Calculate Metering Ratio
-    Formula: (metered ÷ total_consumption) × 100
-    Benchmark: ≥95%
-    """
-    if total_consumption == 0 or pd.isna(total_consumption):
-        return 0
-    return (metered / total_consumption) * 100
+def calculate_complaint_resolution_rate(resolved: float, complaints: float) -> float:
+    """Calculate Complaint Resolution Rate with safe handling"""
+    try:
+        return safe_divide(resolved, complaints, 0.0) * 100
+    except Exception as e:
+        logger.warning(f"Error calculating complaint resolution rate: {e}")
+        return 0.0
 
+def calculate_ww_treatment_rate(ww_treated: float, ww_collected: float) -> float:
+    """Calculate Wastewater Treatment Rate with safe handling"""
+    try:
+        return safe_divide(ww_treated, ww_collected, 0.0) * 100
+    except Exception as e:
+        logger.warning(f"Error calculating wastewater treatment rate: {e}")
+        return 0.0
 
-def calculate_water_quality_compliance(tests_passed, tests_conducted):
-    """
-    Calculate Water Quality Compliance Rate
-    Formula: (tests_passed ÷ tests_conducted) × 100
-    Benchmark: ≥95%
-    """
-    if tests_conducted == 0 or pd.isna(tests_conducted):
-        return 0
-    return (tests_passed / tests_conducted) * 100
-
-
-def calculate_staff_productivity(staff, connections):
-    """
-    Calculate Staff Productivity
-    Formula: staff per 1000 connections
-    Benchmark: ≤7 staff/1000 connections
-    """
-    if connections == 0 or pd.isna(connections):
-        return 0
-    return (staff / connections) * 1000
-
-
-def calculate_complaint_resolution_rate(resolved, complaints):
-    """
-    Calculate Complaint Resolution Rate
-    Formula: (resolved ÷ complaints) × 100
-    Target: ≥90%
-    """
-    if complaints == 0 or pd.isna(complaints):
-        return 0
-    return (resolved / complaints) * 100
-
-
-def calculate_ww_treatment_rate(ww_treated, ww_collected):
-    """
-    Calculate Wastewater Treatment Rate
-    Formula: (ww_treated ÷ ww_collected) × 100
-    """
-    if ww_collected == 0 or pd.isna(ww_collected):
-        return 0
-    return (ww_treated / ww_collected) * 100
-
-
-def get_kpi_status(value, benchmark, inverse=False):
-    """
-    Determine KPI status based on benchmark
-    
-    Args:
-        value: Actual KPI value
-        benchmark: Target benchmark value
-        inverse: If True, lower is better (e.g., NRW)
-    
-    Returns:
-        status: 'good', 'acceptable', 'poor'
-        color: Color code for visualization
-    """
-    if pd.isna(value) or pd.isna(benchmark):
+def get_kpi_status(value: float, kpi_name: str, custom_benchmark: Optional[float] = None) -> Tuple[str, str]:
+    """Determine KPI status based on benchmark"""
+    if pd.isna(value):
         return 'unknown', '#808080'
     
+    benchmark_info = KPI_BENCHMARKS.get(kpi_name, {})
+    benchmark = custom_benchmark if custom_benchmark is not None else benchmark_info.get('target', 0)
+    inverse = benchmark_info.get('inverse', False)
+    
     if inverse:
-        # For metrics like NRW where lower is better
         if value <= benchmark:
-            return 'good', '#2ecc71'  # Green
-        elif value <= benchmark * 1.5:
-            return 'acceptable', '#f39c12'  # Amber
+            return 'good', '#198754'
+        elif value <= benchmark * 1.2:
+            return 'acceptable', '#fd7e14'
         else:
-            return 'poor', '#e74c3c'  # Red
+            return 'poor', '#dc3545'
     else:
-        # For metrics where higher is better
         if value >= benchmark:
-            return 'good', '#2ecc71'  # Green
+            return 'good', '#198754'
         elif value >= benchmark * 0.8:
-            return 'acceptable', '#f39c12'  # Amber
+            return 'acceptable', '#fd7e14'
         else:
-            return 'poor', '#e74c3c'  # Red
+            return 'poor', '#dc3545'
 
-
-def calculate_summary_kpis(data):
+def calculate_summary_kpis(data: Dict[str, pd.DataFrame]) -> Dict[str, Dict[str, Any]]:
     """
-    Calculate high-level summary KPIs for all countries
-    
-    Returns:
-        dict: Dictionary of calculated KPIs with values and benchmarks
+    Calculate high-level summary KPIs for all countries with enhanced robustness
     """
-    w_access = data.get('w_access', pd.DataFrame()).copy()
-    s_access = data.get('s_access', pd.DataFrame()).copy()
-    w_service = data.get('w_service', pd.DataFrame()).copy()
-    finance = data.get('finance', pd.DataFrame()).copy()
-    production = data.get('production', pd.DataFrame()).copy()
-    national = data.get('national', pd.DataFrame()).copy()
+    try:
+        kpis = {}
+        
+        # Get datasets with safe access
+        w_access = data.get('w_access', pd.DataFrame())
+        s_access = data.get('s_access', pd.DataFrame())
+        w_service = data.get('w_service', pd.DataFrame())
+        finance = data.get('finance', pd.DataFrame())
+        production = data.get('production', pd.DataFrame())
+        national = data.get('national', pd.DataFrame())
+        
+        # Calculate each KPI with individual error handling
+        
+        # Water Coverage - with multiple fallbacks
+        water_coverage_value = 0.0
+        if not w_access.empty:
+            try:
+                # Try multiple ways to calculate water coverage
+                if 'access_rate' in w_access.columns:
+                    water_coverage_value = w_access['access_rate'].mean()
+                elif 'safely_managed_pct' in w_access.columns and 'basic_pct' in w_access.columns:
+                    water_coverage_value = (w_access['safely_managed_pct'] + w_access['basic_pct']).mean()
+                elif 'safely_managed' in w_access.columns and 'basic' in w_access.columns and 'popn_total' in w_access.columns:
+                    total_pop = w_access['popn_total'].sum()
+                    if total_pop > 0:
+                        safely_managed_total = w_access['safely_managed'].sum()
+                        basic_total = w_access['basic'].sum()
+                        water_coverage_value = ((safely_managed_total + basic_total) / total_pop) * 100
+            except Exception as e:
+                logger.warning(f"Error calculating water coverage: {e}")
+                water_coverage_value = 0.0
+        
+        kpis['water_coverage'] = {'value': water_coverage_value}
+        
+        # Sanitation Coverage - with multiple fallbacks
+        sanitation_coverage_value = 0.0
+        if not s_access.empty:
+            try:
+                if 'access_rate' in s_access.columns:
+                    sanitation_coverage_value = s_access['access_rate'].mean()
+                elif 'safely_managed_pct' in s_access.columns and 'basic_pct' in s_access.columns:
+                    sanitation_coverage_value = (s_access['safely_managed_pct'] + s_access['basic_pct']).mean()
+                elif 'safely_managed' in s_access.columns and 'basic' in s_access.columns and 'popn_total' in s_access.columns:
+                    total_pop = s_access['popn_total'].sum()
+                    if total_pop > 0:
+                        safely_managed_total = s_access['safely_managed'].sum()
+                        basic_total = s_access['basic'].sum()
+                        sanitation_coverage_value = ((safely_managed_total + basic_total) / total_pop) * 100
+            except Exception as e:
+                logger.warning(f"Error calculating sanitation coverage: {e}")
+                sanitation_coverage_value = 0.0
+        
+        kpis['sanitation_coverage'] = {'value': sanitation_coverage_value}
+        
+        # NRW
+        nrw_value = 0.0
+        if not production.empty and not w_service.empty:
+            try:
+                prod_total = production['production_m3'].sum()
+                metered_total = w_service.get('metered', pd.Series([0])).sum()
+                nrw_value = calculate_nrw(prod_total, metered_total)
+            except Exception as e:
+                logger.warning(f"Error calculating NRW: {e}")
+        
+        kpis['nrw'] = {'value': nrw_value}
+        
+        # OCCR
+        occr_value = 0.0
+        if not finance.empty:
+            try:
+                total_revenue = finance.get('sewer_revenue', pd.Series([0])).sum()
+                total_opex = finance.get('opex', pd.Series([0])).sum()
+                occr_value = calculate_occr(total_revenue, total_opex)
+            except Exception as e:
+                logger.warning(f"Error calculating OCCR: {e}")
+        
+        kpis['occr'] = {'value': occr_value}
+        
+        # Collection Efficiency
+        collection_value = 0.0
+        if not finance.empty:
+            try:
+                total_revenue = finance.get('sewer_revenue', pd.Series([0])).sum()
+                total_billing = finance.get('sewer_billed', pd.Series([0])).sum()
+                collection_value = calculate_collection_efficiency(total_revenue, total_billing)
+            except Exception as e:
+                logger.warning(f"Error calculating collection efficiency: {e}")
+        
+        kpis['collection_efficiency'] = {'value': collection_value}
+        
+        # Water Quality
+        water_quality_value = 0.0
+        if not w_service.empty:
+            try:
+                chlorine_passed = w_service.get('test_passed_chlorine', pd.Series([0])).sum()
+                chlorine_conducted = w_service.get('tests_conducted_chlorine', pd.Series([0])).sum()
+                water_quality_value = calculate_water_quality_compliance(chlorine_passed, chlorine_conducted)
+            except Exception as e:
+                logger.warning(f"Error calculating water quality: {e}")
+        
+        kpis['water_quality'] = {'value': water_quality_value}
+        
+        # Metering Ratio
+        metering_value = 0.0
+        if not w_service.empty:
+            try:
+                metered_total = w_service.get('metered', pd.Series([0])).sum()
+                total_consumption = w_service.get('total_consumption', pd.Series([0])).sum()
+                metering_value = calculate_metering_ratio(metered_total, total_consumption)
+            except Exception as e:
+                logger.warning(f"Error calculating metering ratio: {e}")
+        
+        kpis['metering_ratio'] = {'value': metering_value}
+        
+        # Service Hours
+        service_hours_value = 0.0
+        if not production.empty:
+            try:
+                service_hours_value = production.get('service_hours', pd.Series([0])).mean()
+            except Exception as e:
+                logger.warning(f"Error calculating service hours: {e}")
+        
+        kpis['service_hours'] = {'value': service_hours_value}
+        
+        # Staff Productivity
+        staff_productivity_value = 0.0
+        if not w_service.empty and not finance.empty:
+            try:
+                total_connections = w_service.get('households', pd.Series([0])).sum()
+                total_staff = finance.get('w_staff', pd.Series([0])).sum() + finance.get('san_staff', pd.Series([0])).sum()
+                staff_productivity_value = calculate_staff_productivity(total_staff, total_connections)
+            except Exception as e:
+                logger.warning(f"Error calculating staff productivity: {e}")
+        
+        kpis['staff_productivity'] = {'value': staff_productivity_value}
+        
+        # Add metadata to each KPI
+        for kpi_name in kpis:
+            if kpi_name in KPI_BENCHMARKS:
+                kpis[kpi_name].update({
+                    'benchmark': KPI_BENCHMARKS[kpi_name]['target'],
+                    'unit': KPI_BENCHMARKS[kpi_name]['unit'],
+                    'inverse': KPI_BENCHMARKS[kpi_name]['inverse'],
+                    'description': KPI_BENCHMARKS[kpi_name]['description']
+                })
+                
+                # Calculate status
+                status, color = get_kpi_status(kpis[kpi_name]['value'], kpi_name)
+                kpis[kpi_name]['status'] = status
+                kpis[kpi_name]['color'] = color
+        
+        return kpis
+        
+    except Exception as e:
+        logger.error(f"Error calculating summary KPIs: {e}")
+        return _get_empty_kpis()
 
-    # Get latest year data where available
-    latest_year = w_access['year'].max() if not w_access.empty else None
-    if latest_year is not None:
-        w_access_latest = w_access[w_access['year'] == latest_year]
-        s_access_latest = s_access[s_access['year'] == latest_year] if not s_access.empty else s_access
-        finance_latest_year = finance[finance['year'] == latest_year] if ('year' in finance.columns and not finance.empty) else finance
-        national_latest = national[national['year'] == latest_year] if ('year' in national.columns and not national.empty) else national
-    else:
-        w_access_latest = w_access
-        s_access_latest = s_access
-        finance_latest_year = finance
-        national_latest = national
-    
-    # Calculate aggregate KPIs
-    kpis = {}
-    
-    # Water Coverage
-    total_pop = w_access_latest['popn_total'].sum()
-    total_safely_basic = (w_access_latest['safely_managed'] + w_access_latest['basic']).sum()
-    kpis['water_coverage'] = {
-        'value': (total_safely_basic / total_pop * 100) if total_pop > 0 else 0,
-        'benchmark': 100,
-        'unit': '%'
-    }
-    
-    # Sanitation Coverage
-    san_total_pop = s_access_latest['popn_total'].sum()
-    san_safely_basic = (s_access_latest['safely_managed'] + s_access_latest['basic']).sum()
-    kpis['sanitation_coverage'] = {
-        'value': (san_safely_basic / san_total_pop * 100) if san_total_pop > 0 else 0,
-        'benchmark': 100,
-        'unit': '%'
-    }
-    
-    # NRW (approximate from production vs metered)
-    prod_total = production['production_m3'].sum()
-    metered_total = w_service['metered'].sum()
-    kpis['nrw'] = {
-        'value': calculate_nrw(prod_total, metered_total),
-        'benchmark': 25,
-        'unit': '%',
-        'inverse': True
-    }
-    
-    # OCCR
-    total_revenue = finance['sewer_revenue'].sum()
-    total_opex = finance['opex'].sum()
-    kpis['occr'] = {
-        'value': calculate_occr(total_revenue, total_opex),
-        'benchmark': 110,
-        'unit': '%'
-    }
-    
-    # Revenue Collection Efficiency
-    kpis['collection_efficiency'] = {
-        'value': calculate_collection_efficiency(total_revenue, finance['sewer_billed'].sum()),
-        'benchmark': 95,
-        'unit': '%'
-    }
-    
-    # Water Quality (Chlorine)
-    chlorine_passed = w_service['test_passed_chlorine'].sum()
-    chlorine_conducted = w_service['tests_conducted_chlorine'].sum()
-    kpis['water_quality'] = {
-        'value': calculate_water_quality_compliance(chlorine_passed, chlorine_conducted),
-        'benchmark': 95,
-        'unit': '%'
-    }
-    
-    # Metering Ratio
-    kpis['metering_ratio'] = {
-        'value': calculate_metering_ratio(metered_total, w_service['total_consumption'].sum()),
-        'benchmark': 95,
-        'unit': '%'
-    }
-
-    # Personnel Cost as % of O&M (latest year)
-    staff_cost_total = national_latest['staff_cost'].sum() if not national_latest.empty else 0
-    opex_latest = finance_latest_year['opex'].sum() if not finance_latest_year.empty else total_opex
-    personnel_ratio = (staff_cost_total / opex_latest * 100) if opex_latest else 0
-    kpis['personnel_cost_ratio'] = {
-        'value': personnel_ratio,
-        'benchmark': 35,
-        'unit': '%',
-        'inverse': True
-    }
-
-    # Staff Productivity (staff per 1000 connections/households)
-    latest_connections = (
-        w_service.sort_values('date')
-        .dropna(subset=['households'])
-        .groupby(['country', 'zone'], as_index=False)
-        .tail(1)
-    ) if 'zone' in w_service.columns else pd.DataFrame()
-
-    total_connections = latest_connections['households'].sum() if not latest_connections.empty else w_service['households'].sum()
-    total_staff = finance['san_staff'].sum() + finance['w_staff'].sum()
-    staff_productivity = calculate_staff_productivity(total_staff, total_connections)
-    kpis['staff_productivity'] = {
-        'value': staff_productivity,
-        'benchmark': 7,
-        'unit': 'staff/1k',
-        'inverse': True
-    }
-
-    
-    # Service Hours (average)
-    kpis['service_hours'] = {
-        'value': production['service_hours'].mean(),
-        'benchmark': 20,
-        'unit': 'hrs/day'
-    }
-    
-    return kpis
-
-
-def calculate_country_kpis(data, country):
-    """
-    Calculate KPIs for a specific country
-    
-    Args:
-        data: Dictionary of all datasets
-        country: Country name
-    
-    Returns:
-        dict: Country-specific KPIs
-    """
-    # Filter data by country
-    w_access = data.get('w_access', pd.DataFrame())
-    s_access = data.get('s_access', pd.DataFrame())
-    w_service = data.get('w_service', pd.DataFrame())
-    finance = data.get('finance', pd.DataFrame())
-    production = data.get('production', pd.DataFrame())
-    national = data.get('national', pd.DataFrame())
-
-    w_access = w_access[w_access['country'] == country]
-    s_access = s_access[s_access['country'] == country]
-    w_service = w_service[w_service['country'] == country]
-    finance = finance[finance['country'] == country]
-    production = production[production['country'] == country]
-    national = national[national['country'] == country]
-
-    if w_access.empty or s_access.empty or w_service.empty or finance.empty or production.empty:
-        return {
-            'water_coverage': 0,
-            'sanitation_coverage': 0,
-            'nrw': 0,
-            'occr': 0,
-            'collection_efficiency': 0,
-            'personnel_cost_ratio': 0,
-            'staff_productivity': 0,
-            'service_hours': 0,
-            'water_quality': 0,
-            'metering_ratio': 0
+def _get_empty_kpis() -> Dict[str, Dict[str, Any]]:
+    """Return empty KPI structure when calculation fails"""
+    empty_kpis = {}
+    for kpi_name, benchmark_info in KPI_BENCHMARKS.items():
+        empty_kpis[kpi_name] = {
+            'value': 0.0,
+            'benchmark': benchmark_info['target'],
+            'unit': benchmark_info['unit'],
+            'inverse': benchmark_info['inverse'],
+            'description': benchmark_info['description'],
+            'status': 'unknown',
+            'color': '#808080'
         }
-    
-    # Get latest year
-    latest_year = w_access['year'].max()
-    w_access_latest = w_access[w_access['year'] == latest_year]
-    s_access_latest = s_access[s_access['year'] == latest_year]
-    finance_latest_year = finance[finance['year'] == latest_year] if 'year' in finance.columns else finance
-    national_latest = national[national['year'] == latest_year] if not national.empty else national
-    
-    kpis = {}
-    
-    # Water Coverage
-    total_pop = w_access_latest['popn_total'].sum()
-    total_safely_basic = (w_access_latest['safely_managed'] + w_access_latest['basic']).sum()
-    kpis['water_coverage'] = (total_safely_basic / total_pop * 100) if total_pop > 0 else 0
-    
-    # Sanitation Coverage
-    san_total_pop = s_access_latest['popn_total'].sum()
-    san_safely_basic = (s_access_latest['safely_managed'] + s_access_latest['basic']).sum()
-    kpis['sanitation_coverage'] = (san_safely_basic / san_total_pop * 100) if san_total_pop > 0 else 0
-    
-    # NRW
-    prod_total = production['production_m3'].sum()
-    metered_total = w_service['metered'].sum()
-    kpis['nrw'] = calculate_nrw(prod_total, metered_total)
-    
-    # OCCR
-    total_revenue = finance['sewer_revenue'].sum()
-    total_opex = finance['opex'].sum()
-    kpis['occr'] = calculate_occr(total_revenue, total_opex)
-    
-    # Collection Efficiency
-    kpis['collection_efficiency'] = calculate_collection_efficiency(
-        total_revenue, finance['sewer_billed'].sum()
-    )
+    return empty_kpis
 
-    # Personnel Cost Ratio
-    staff_cost_total = national_latest['staff_cost'].sum() if not national_latest.empty else 0
-    opex_latest = finance_latest_year['opex'].sum() if not finance_latest_year.empty else total_opex
-    kpis['personnel_cost_ratio'] = (staff_cost_total / opex_latest * 100) if opex_latest else 0
+def calculate_country_kpis(data: Dict[str, pd.DataFrame], country: str) -> Dict[str, float]:
+    """
+    Calculate KPIs for a specific country with enhanced error handling
+    """
+    try:
+        # Filter data by country
+        filtered_data = {}
+        for name, df in data.items():
+            if not df.empty and 'country' in df.columns:
+                filtered_data[name] = df[df['country'] == country]
+            else:
+                filtered_data[name] = df
+        
+        # Calculate summary KPIs for the country
+        country_kpis = calculate_summary_kpis(filtered_data)
+        
+        # Extract just the values for backward compatibility
+        simple_kpis = {}
+        for kpi_name, kpi_data in country_kpis.items():
+            if isinstance(kpi_data, dict) and 'value' in kpi_data:
+                simple_kpis[kpi_name] = kpi_data['value']
+            else:
+                simple_kpis[kpi_name] = kpi_data
+        
+        return simple_kpis
+        
+    except Exception as e:
+        logger.error(f"Error calculating country KPIs for {country}: {e}")
+        return {kpi: 0.0 for kpi in KPI_BENCHMARKS.keys()}
 
-    # Staff Productivity
-    latest_connections = (
-        w_service.sort_values('date')
-        .dropna(subset=['households'])
-        .groupby('zone', as_index=False)
-        .tail(1)
-    ) if 'zone' in w_service.columns else pd.DataFrame()
-
-    total_connections = latest_connections['households'].sum() if not latest_connections.empty else w_service['households'].sum()
-    total_staff = finance['san_staff'].sum() + finance['w_staff'].sum()
-    kpis['staff_productivity'] = calculate_staff_productivity(total_staff, total_connections)
-
-    # Service Hours
-    kpis['service_hours'] = production['service_hours'].mean() if not production.empty else 0
-
-    # Water Quality
-    chlorine_passed = w_service['test_passed_chlorine'].sum()
-    chlorine_conducted = w_service['tests_conducted_chlorine'].sum()
-    kpis['water_quality'] = calculate_water_quality_compliance(chlorine_passed, chlorine_conducted)
-
-    # Metering Ratio
-    kpis['metering_ratio'] = calculate_metering_ratio(
-        w_service['metered'].sum(),
-        w_service['total_consumption'].sum()
-    )
-    
-    return kpis
-
-
-# ============================================================================
-# CUSTOMER-LEVEL FINANCIAL ANALYSIS FUNCTIONS (NEW - for billing.csv)
-# ============================================================================
-
+# Customer-level financial analysis functions
 def calculate_revenue_collection_efficiency_customer_level(billing_df, country=None, date_range=None):
     """
     Calculate RCE using billing.csv for customer-level granularity
-    
-    Args:
-        billing_df: Customer billing dataframe
-        country: Optional country filter (string or list)
-        date_range: Optional (start_date, end_date) tuple
-    
-    Returns:
-        tuple: (rce_percentage, total_billed, total_paid)
     """
-    df = billing_df.copy()
-    
-    # Apply filters
-    if country:
-        if isinstance(country, str):
-            df = df[df['country'] == country]
-        else:
-            df = df[df['country'].isin(country)]
-    
-    if date_range:
-        df = df[(df['date'] >= pd.to_datetime(date_range[0])) & 
-                (df['date'] <= pd.to_datetime(date_range[1]))]
-    
-    total_billed = df['billed'].sum()
-    total_paid = df['paid'].sum()
-    rce = (total_paid / total_billed * 100) if total_billed > 0 else 0
-    
-    return rce, total_billed, total_paid
-
+    try:
+        df = billing_df.copy()
+        
+        # Apply filters
+        if country and 'country' in df.columns:
+            if isinstance(country, str):
+                df = df[df['country'] == country]
+            else:
+                df = df[df['country'].isin(country)]
+        
+        if date_range and 'date' in df.columns:
+            df = df[(df['date'] >= pd.to_datetime(date_range[0])) & 
+                    (df['date'] <= pd.to_datetime(date_range[1]))]
+        
+        total_billed = df['billed'].sum()
+        total_paid = df['paid'].sum()
+        rce = calculate_collection_efficiency(total_paid, total_billed)
+        
+        return rce, total_billed, total_paid
+        
+    except Exception as e:
+        logger.error(f"Error calculating customer RCE: {e}")
+        return 0.0, 0.0, 0.0
 
 def identify_payment_risk_customers(billing_df, threshold_high=0.5, threshold_medium=0.8):
     """
     Segment customers by payment behavior
-    
-    Args:
-        billing_df: Customer billing dataframe
-        threshold_high: Payment ratio below this is High Risk (default 0.5)
-        threshold_medium: Payment ratio below this is Medium Risk (default 0.8)
-    
-    Returns:
-        DataFrame with columns: customer_id, billed, paid, country, zone, 
-                                payment_ratio, risk_category, unpaid_amount
     """
-    customer_summary = billing_df.groupby('customer_id').agg({
-        'billed': 'sum',
-        'paid': 'sum',
-        'country': 'first',
-        'zone': 'first'
-    }).reset_index()
-    
-    # Calculate payment ratio with zero-division protection
-    customer_summary['payment_ratio'] = np.where(
-        customer_summary['billed'] != 0, 
-        customer_summary['paid'] / customer_summary['billed'], 
-        0
-    )
-    customer_summary['risk_category'] = customer_summary['payment_ratio'].apply(
-        lambda x: 'High Risk' if x < threshold_high else (
-            'Medium Risk' if x < threshold_medium else 'Low Risk'
+    try:
+        customer_summary = billing_df.groupby('customer_id').agg({
+            'billed': 'sum',
+            'paid': 'sum',
+            'country': 'first',
+            'zone': 'first'
+        }).reset_index()
+        
+        # Calculate payment ratio with zero-division protection
+        customer_summary['payment_ratio'] = np.where(
+            customer_summary['billed'] != 0, 
+            customer_summary['paid'] / customer_summary['billed'], 
+            0
         )
-    )
-    customer_summary['unpaid_amount'] = customer_summary['billed'] - customer_summary['paid']
-    
-    return customer_summary
-
-
-def calculate_commercial_nrw(billing_df, all_fin_service_df):
-    """
-    Calculate commercial NRW (revenue losses due to non-payment)
-    
-    Commercial losses represent the volume equivalent of unpaid bills.
-    This is water that was delivered and billed but not paid for.
-    
-    Args:
-        billing_df: Customer billing dataframe
-        all_fin_service_df: Financial service dataframe
-    
-    Returns:
-        float: Commercial losses in m³
-    """
-    total_billed_volume = billing_df['consumption_m3'].sum()
-    
-    # Calculate average tariff (revenue per m³)
-    total_revenue = all_fin_service_df['sewer_revenue'].sum()
-    total_billed_amount = billing_df['billed'].sum()
-    
-    if total_billed_volume == 0 or total_billed_amount == 0:
-        return 0
-    
-    avg_tariff = total_revenue / total_billed_volume
-    
-    # Convert paid amount to volume equivalent
-    total_paid = billing_df['paid'].sum()
-    total_paid_volume_equivalent = total_paid / avg_tariff if avg_tariff > 0 else 0
-    
-    # Commercial losses = billed volume - paid volume equivalent
-    commercial_losses = total_billed_volume - total_paid_volume_equivalent
-    
-    return max(commercial_losses, 0)  # Ensure non-negative
-
-
-def calculate_physical_nrw(production_df, billing_df):
-    """
-    Calculate physical NRW (water lost through leaks, theft, meter inaccuracies)
-    
-    Physical losses represent actual water that was produced but never billed.
-    This includes leaks, unauthorized connections, and meter under-registration.
-    
-    Args:
-        production_df: Production dataframe
-        billing_df: Customer billing dataframe
-    
-    Returns:
-        float: Physical losses in m³
-    """
-    total_produced = production_df['production_m3'].sum()
-    total_billed_volume = billing_df['consumption_m3'].sum()
-    
-    # Physical losses = produced - billed
-    physical_losses = total_produced - total_billed_volume
-    
-    return max(physical_losses, 0)  # Ensure non-negative
-
-
-def get_payment_by_zone(billing_df):
-    """
-    Aggregate payment data by zone for geographic analysis
-    
-    Args:
-        billing_df: Customer billing dataframe
-    
-    Returns:
-        DataFrame with columns: country, zone, total_billed, total_paid, 
-                                customer_count, collection_rate
-    """
-    payment_by_zone = billing_df.groupby(['country', 'zone']).agg({
-        'billed': 'sum',
-        'paid': 'sum',
-        'customer_id': 'count'
-    }).reset_index()
-    
-    payment_by_zone.columns = ['country', 'zone', 'total_billed', 'total_paid', 'customer_count']
-    payment_by_zone['collection_rate'] = (
-        payment_by_zone['total_paid'] / payment_by_zone['total_billed'] * 100
-    ).fillna(0)
-    
-    return payment_by_zone
-
+        customer_summary['risk_category'] = customer_summary['payment_ratio'].apply(
+            lambda x: 'High Risk' if x < threshold_high else (
+                'Medium Risk' if x < threshold_medium else 'Low Risk'
+            )
+        )
+        customer_summary['unpaid_amount'] = customer_summary['billed'] - customer_summary['paid']
+        
+        return customer_summary
+        
+    except Exception as e:
+        logger.error(f"Error identifying payment risk customers: {e}")
+        return pd.DataFrame()
