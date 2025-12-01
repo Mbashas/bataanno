@@ -70,3 +70,5 @@ Thumbs.db
 *.pdf
 water_services_performance_report.pdf
 
+.streamlit/secrets.toml
+generate_password.py

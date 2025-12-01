@@ -1,6 +1,7 @@
 """
 Landing Page / Home Page
 Entry point with navigation cards and summary KPIs
+Redesigned with modern UI and custom branding
 """
 
 import streamlit as st
@@ -8,80 +9,147 @@ import plotly.graph_objects as go
 from utils.data_loader import load_all_data, get_latest_update_date
 from utils.kpi_calculator import calculate_summary_kpis
 from utils.visualizations import COLORS
+from utils.theme import get_theme, BRAND, LIGHT_THEME
+from assets.logo_svg import get_wash_logo_colored_svg
 
 
 def render_home_page(data, countries_filter, date_range=None):
     """Render the home/landing page with country selection cards"""
+    theme = get_theme()
     
-    st.title("🌊 Multi-Country Water Services Performance Dashboard")
-    
-    # Mission statement
-    st.markdown("""
-    ### Empowering Utility Managers Across Africa
-    
-    This dashboard provides actionable insights for water and sanitation service providers in 
-    **Uganda**, **Cameroon**, **Lesotho**, and **Malawi**. Make data-driven decisions to improve 
-    operational efficiency, financial sustainability, service quality, and equitable access.
-    """)
-    
-    st.markdown("---")
+    # Clean page header with styled logo box
+    st.markdown(f"""
+    <div style="margin-bottom: 40px; display: flex; align-items: center; gap: 20px;">
+        <div style="
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #58A0C8 0%, #34699A 50%, #113F67 100%);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(17, 63, 103, 0.25);
+            flex-shrink: 0;
+        ">
+            <span style="font-size: 28px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.15));">💧</span>
+        </div>
+        <div>
+            <h1 style="
+                font-size: 2rem; 
+                font-weight: 700; 
+                color: {theme['text_primary']}; 
+                margin: 0 0 4px 0;
+                line-height: 1.2;
+            ">
+                WASH Performance Dashboard
+            </h1>
+            <p style="
+                font-size: 0.95rem; 
+                color: {theme['text_secondary']}; 
+                margin: 0;
+            ">
+                Multi-country water services analytics for Uganda, Cameroon, Lesotho, and Malawi
+            </p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Country Selection Section
-    st.header("🌍 Select a Country to Explore")
-    st.markdown("Choose a country below to view its comprehensive water services dashboard:")
+    st.markdown(f"""
+    <div style="
+        margin-bottom: 24px; 
+        padding: 16px 20px; 
+        background: linear-gradient(135deg, rgba(17, 63, 103, 0.03) 0%, rgba(88, 160, 200, 0.05) 100%);
+        border-radius: 12px;
+        border-left: 4px solid #113F67;
+    ">
+        <h2 style="
+            font-size: 1.25rem; 
+            font-weight: 700; 
+            color: {theme['text_primary']}; 
+            margin: 0 0 4px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        ">
+            <span>🌍</span> Select a Country
+        </h2>
+        <p style="color: {theme['text_secondary']}; margin: 0; font-size: 14px;">
+            Choose a country below to explore detailed analytics and performance metrics
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Country configuration with flag emojis and descriptions
+    # Country configuration with new theme colors
     countries_config = [
         {
             'name': 'Uganda',
             'emoji': '🇺🇬',
             'description': 'National Water and Sewerage Corporation (NWSC)',
             'zones': 'Central, Kawempe, Nakawa, Rubaga',
-            'color': '#FFD700'
+            'color': theme['countries']['Uganda'],
+            'is_hero': True  # First country gets hero treatment
         },
         {
             'name': 'Malawi',
             'emoji': '🇲🇼',
             'description': 'Lilongwe Water Board (LWB)',
             'zones': 'Capital Hill, Kanengo, Lumbadzi, Old Town',
-            'color': '#FF6347'
+            'color': theme['countries']['Malawi'],
+            'is_hero': False
         },
         {
             'name': 'Lesotho',
             'emoji': '🇱🇸',
             'description': 'Water and Sewerage Company (WASCO)',
             'zones': 'Maseru Urban, Maseru Rural, Rural Hinterland',
-            'color': '#4682B4'
+            'color': theme['countries']['Lesotho'],
+            'is_hero': False
         },
         {
             'name': 'Cameroon',
             'emoji': '🇨🇲',
             'description': 'Camerounaise Des Eaux (CDE)',
             'zones': 'Yaounde 1-7',
-            'color': '#32CD32'
+            'color': theme['countries']['Cameroon'],
+            'is_hero': False
         }
     ]
     
-    # Display country cards in 2x2 grid
-    col1, col2 = st.columns(2)
+    # Bento Grid Layout: 1 large hero + 3 smaller cards
+    col_hero, col_right = st.columns([1.2, 1])
     
-    for idx, country_info in enumerate(countries_config):
-        col = col1 if idx % 2 == 0 else col2
-        
-        with col:
-            render_country_card(
+    # Hero card (Uganda)
+    with col_hero:
+        render_country_card_new(
+            countries_config[0]['name'],
+            countries_config[0]['emoji'],
+            countries_config[0]['description'],
+            countries_config[0]['zones'],
+            countries_config[0]['color'],
+            is_hero=True,
+            theme=theme
+        )
+    
+    # Smaller cards stack
+    with col_right:
+        for country_info in countries_config[1:]:
+            render_country_card_new(
                 country_info['name'],
                 country_info['emoji'],
                 country_info['description'],
                 country_info['zones'],
-                country_info['color']
+                country_info['color'],
+                is_hero=False,
+                theme=theme
             )
     
-    st.markdown("---")
+    st.markdown("<div style='height: 32px;'></div>", unsafe_allow_html=True)
     
     # Overall Statistics Summary
+    st.markdown("---")
     st.header("📊 Multi-Country Overview")
-    st.markdown("Key performance indicators across all four countries:")
+    st.markdown("Key performance indicators across all four countries")
     
     kpis = calculate_summary_kpis(data)
 
@@ -144,45 +212,23 @@ def render_home_page(data, countries_filter, date_range=None):
     st.markdown("---")
     
     # How to Use Guide
-    with st.expander("📖 How to Use This Dashboard"):
+    with st.expander("📖 Quick Start Guide"):
         st.markdown("""
-        ### Getting Started
+        **Getting Started**
+        1. Select a country card above to view its dashboard
+        2. Use tabs to explore different domains (Production, Service, Access, Finance)
+        3. Filter by zone and date range using the sidebar
+        4. Generate reports for actionable insights
         
-        1. **Select a Country**: Click "View Dashboard" on any country card above
-        2. **Explore Domains**: Use tabs to navigate between Overview, Production, Service, Access, and Finance
-        3. **Filter by Zone**: Use the sidebar to select specific zones within the country
-        4. **Adjust Date Range**: Filter data by selecting a date range in the sidebar
-        5. **Generate Reports**: Click the "Generate Reports" button in the sidebar for actionable insights
-        
-        ### Dashboard Domains
-        
-        - **Overview**: Comprehensive KPI scorecard with sector benchmarks
-        - **Production**: Analyze water production volumes, service hours, and capacity
-        - **Service**: Monitor water quality, complaints, and service reliability
-        - **Access**: Track JMP service ladder coverage and equity gaps
-        - **Finance**: Evaluate OCCR, revenue collection, and cost recovery
-        
-        ### Key Performance Indicators
-        
-        - **Water Coverage**: % population with safely managed or basic water access (Target: 100%)
-        - **Sanitation Coverage**: % population with safely managed or basic sanitation (Target: 100%)
-        - **NRW**: Non-Revenue Water as % of production (Benchmark: ≤25%)
+        **Key Indicators**
+        - **Water/Sanitation Coverage**: % population with managed access (Target: 100%)
+        - **NRW**: Non-Revenue Water (Benchmark: ≤25%)
         - **OCCR**: Operating Cost Coverage Ratio (Benchmark: ≥110%)
-        - **Collection Efficiency**: Revenue collected vs billed (Benchmark: ≥95%)
-        - **Water Quality**: % tests passed for drinking water compliance (Benchmark: ≥95%)
-        - **Metering Ratio**: % consumption recorded through meters (Benchmark: ≥95%)
-        - **Service Hours**: Average hours of water supply per day (Benchmark: ≥20 hrs)
+        - **Collection Efficiency**: Revenue vs billed (Benchmark: ≥95%)
+        - **Water Quality**: Tests passed (Benchmark: ≥95%)
+        - **Service Hours**: Hours of supply (Benchmark: ≥20 hrs/day)
         
-        ### Data Sources
-        
-        This dashboard integrates data from:
-        - Daily production records
-        - Monthly service delivery data
-        - Annual access statistics (JMP ladder)
-        - Financial and operational expenditure
-        - National accounts and regulatory data
-        
-        **Last Updated**: {update_date}
+        **Data Updated**: {update_date}
         """.format(update_date=get_latest_update_date()))
     
     # Footer
@@ -191,7 +237,8 @@ def render_home_page(data, countries_filter, date_range=None):
 
 
 def render_country_card(country_name, emoji, description, zones, color):
-    """Render a country selection card with View Dashboard button"""
+    """Render a country selection card with View Dashboard button (legacy)"""
+    theme = get_theme()
     st.markdown(f"""
     <div style="
         background: linear-gradient(135deg, {color}20 0%, {color}40 100%);
@@ -201,9 +248,9 @@ def render_country_card(country_name, emoji, description, zones, color):
         margin-bottom: 20px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     ">
-        <h2 style="margin: 0 0 10px 0; color: #1e1e1e; font-size: 32px;">{emoji} {country_name}</h2>
-        <p style="margin: 0 0 10px 0; font-size: 16px; color: #333; font-weight: 500;">{description}</p>
-        <p style="margin: 0; font-size: 13px; color: #666;"><strong>Zones:</strong> {zones}</p>
+        <h2 style="margin: 0 0 10px 0; color: {theme['text_primary']}; font-size: 32px;">{emoji} {country_name}</h2>
+        <p style="margin: 0 0 10px 0; font-size: 16px; color: {theme['text_secondary']}; font-weight: 500;">{description}</p>
+        <p style="margin: 0; font-size: 13px; color: {theme['text_muted']};"><strong>Zones:</strong> {zones}</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -212,19 +259,79 @@ def render_country_card(country_name, emoji, description, zones, color):
         st.rerun()
 
 
+def render_country_card_new(country_name, emoji, description, zones, color, is_hero=False, theme=None):
+    """Render a modern country selection card with clean styling"""
+    if theme is None:
+        theme = get_theme()
+    
+    # Card styling based on hero status
+    if is_hero:
+        # Hero card container with accent border
+        st.markdown(f"""
+        <div style="
+            background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFF 100%);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(17, 63, 103, 0.08);
+            border-left: 5px solid {color};
+            box-shadow: 0 4px 16px rgba(17, 63, 103, 0.08);
+        ">
+            <div style="display: flex; align-items: flex-start; gap: 20px;">
+                <div style="font-size: 56px; line-height: 1;">{emoji}</div>
+                <div style="flex: 1;">
+                    <h3 style="color: {theme['text_primary']}; margin: 0 0 8px 0; font-size: 1.5rem; font-weight: 700;">{country_name}</h3>
+                    <p style="color: {theme['text_secondary']}; margin: 0 0 8px 0; font-size: 14px;">{description}</p>
+                    <p style="color: {theme['text_muted']}; margin: 0; font-size: 12px;">📍 <strong>Zones:</strong> {zones}</p>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("🔍 Explore Dashboard", key=f"country_{country_name}_new", use_container_width=True, type="primary"):
+            st.session_state.selected_country = country_name
+            st.rerun()
+    else:
+        # Regular card (compact)
+        st.markdown(f"""
+        <div style="
+            background: #FFFFFF;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(17, 63, 103, 0.06);
+            border-left: 4px solid {color};
+            box-shadow: 0 2px 8px rgba(17, 63, 103, 0.04);
+            transition: all 0.2s ease;
+        ">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div style="font-size: 32px; line-height: 1;">{emoji}</div>
+                <div style="flex: 1;">
+                    <h4 style="color: {theme['text_primary']}; margin: 0; font-size: 1.1rem; font-weight: 700;">{country_name}</h4>
+                    <p style="color: {theme['text_secondary']}; margin: 2px 0 0 0; font-size: 12px;">{description}</p>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button(f"→ View {country_name}", key=f"country_{country_name}_new", use_container_width=True):
+            st.session_state.selected_country = country_name
+            st.rerun()
 def render_kpi_card(title, value, target, color):
     """Render a KPI metric card"""
+    theme = get_theme()
     st.markdown(f"""
     <div style="
-        background-color: {color}20;
-        border-left: 5px solid {color};
-        padding: 15px;
-        border-radius: 5px;
-        margin-bottom: 10px;
+        background-color: {theme['bg_card']};
+        border-left: 4px solid {color};
+        padding: 16px 20px;
+        border-radius: 12px;
+        margin-bottom: 12px;
+        box-shadow: {theme['shadow']};
     ">
-        <p style="margin: 0; font-size: 12px; color: #666;">{title}</p>
-        <p style="margin: 5px 0; font-size: 28px; font-weight: bold; color: {color};">{value}</p>
-        <p style="margin: 0; font-size: 11px; color: #888;">{target}</p>
+        <p style="margin: 0; font-size: 12px; color: {theme['text_muted']}; font-weight: 500;">{title}</p>
+        <p style="margin: 6px 0; font-size: 28px; font-weight: 700; color: {color};">{value}</p>
+        <p style="margin: 0; font-size: 11px; color: {theme['text_secondary']};">{target}</p>
     </div>
     """, unsafe_allow_html=True)
 

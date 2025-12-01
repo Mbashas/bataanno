@@ -1,0 +1,41 @@
+credentials:
+  usernames:
+    admin:
+      name: Administrator
+      password: $2b$12$3w5nC82f1EQH4cD2pCdJDeYQa/Epeizj/Bf7TAjeyO/ffsH8SY5z6  # admin123
+      email: admin@washboard.org
+      role: admin
+      country: null  # Can access all countries
+    
+    uganda_manager:
+      name: Uganda Utility Manager
+      password: $2b$12$2ADtNinLpgqj4pVEddUH8.CwDYcTVNKsU24WNP3Gv3FM6SSopFf32  # uganda123
+      email: uganda@washboard.org
+      role: country_manager
+      country: Uganda
+    
+    malawi_manager:
+      name: Malawi Utility Manager
+      password: $2b$12$MZmnV1rks3ngcyPAvzPpnutG65BEbKvDRm7YsKRSGfDRzKj0AcfX.  # malawi123
+      email: malawi@washboard.org
+      role: country_manager
+      country: Malawi
+    
+    lesotho_manager:
+      name: Lesotho Utility Manager
+      password: $2b$12$IubRoA4NiEC2oVJxOKXABewHTmWj6Ftp8n3h3F1h0JFTB20TkZ/d.  # lesotho123
+      email: lesotho@washboard.org
+      role: country_manager
+      country: Lesotho
+    
+    cameroon_manager:
+      name: Cameroon Utility Manager
+      password: $2b$12$oz.juh1LgbWEp98MDcb/cuXOoc8z3GMSDFe0bfUKSqQZdkSnBC3NO  # cameroon123
+      email: cameroon@washboard.org
+      role: country_manager
+      country: Cameroon
+
+cookie:
+  expiry_days: 30
+  key: wash_dashboard_secret_key_2024
+  name: wash_dashboard_auth

@@ -18,8 +18,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # --------------------------------------------------------------------------
 
 # New imports for Gemini Chatbot
-from google import genai
-from google.genai.errors import APIError
+import google.generativeai as genai
+from google.generativeai.types import GenerationConfig
 
 # NOTE: calculate_all_country_kpis is now available from this import
 from utils.kpi_calculator import calculate_summary_kpis, calculate_country_kpis, calculate_all_country_kpis, get_kpi_status 
@@ -33,25 +33,28 @@ from utils.visualizations import create_kpi_card, create_trend_line, COLORS, BEN
 try:
     # Use st.secrets to securely access the API key
     if "GEMINI_API_KEY" not in st.secrets:
-        client = None # Set client to None if key is missing
+        api_key_configured = False
     else:
-        client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+        genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+        api_key_configured = True
 except Exception as e:
     st.error(f"Error configuring Gemini client: {e}")
-    client = None
+    api_key_configured = False
 
-MODEL_NAME = "gemini-2.5-flash"
+MODEL_NAME = "gemini-2.0-flash-exp"
 
 
 def get_chat_session(system_prompt):
     """Initializes the chat session with the system prompt."""
-    if client:
+    if api_key_configured:
         try:
-            # Initialize the chat session with the system prompt
-            chat = client.chats.create(
-                model=MODEL_NAME,
-                config={"system_instruction": system_prompt}
+            # Initialize the model with system instruction
+            model = genai.GenerativeModel(
+                model_name=MODEL_NAME,
+                system_instruction=system_prompt
             )
+            # Start a chat session
+            chat = model.start_chat(history=[])
             # Return the chat object AND the system prompt for later comparison
             return chat, system_prompt 
         except Exception as e:
@@ -184,22 +187,17 @@ def build_insights_prompt(kpis, country_kpis):
 @st.cache_data(show_spinner=False)
 def get_ai_insights(kpis, country_kpis):
     """Fetches the generated insights from the AI, using caching."""
-    if not client:
+    if not api_key_configured:
         return None
         
     prompt = build_insights_prompt(kpis, country_kpis)
     
     try:
-        response = client.models.generate_content(
-            model=MODEL_NAME,
-            contents=prompt
-        )
+        model = genai.GenerativeModel(model_name=MODEL_NAME)
+        response = model.generate_content(prompt)
         return response.text
-    except APIError as e:
-        st.error(f"AI Analysis Error: {e.message}")
-        return None
     except Exception as e:
-        st.error(f"An unexpected error occurred during insight generation: {e}")
+        st.error(f"AI Analysis Error: {e}")
         return None
 
 
@@ -353,8 +351,8 @@ def render_overview_page(data, countries_filter, date_range=None):
     st.markdown("---")
     st.subheader("💬 AI Data Assistant")
 
-    if not client:
-        st.warning("The AI Assistant is currently disabled. Please ensure the 'google-genai' library is installed and 'GEMINI_API_KEY' is set in your .streamlit/secrets.toml.")
+    if not api_key_configured:
+        st.warning("The AI Assistant is currently disabled. Please ensure the 'google-generativeai' library is installed and 'GEMINI_API_KEY' is set in your .streamlit/secrets.toml.")
         return # Stop chat functionality if client failed to initialize
 
     # Check context change
@@ -478,23 +476,20 @@ Start by clicking one of the suggested prompts below!
                     full_response = ""
                     try:
                         chat = st.session_state.chat_session
-                        response_stream = chat.send_message_stream(current_prompt)
+                        response = chat.send_message(current_prompt, stream=True)
                         
                         # Create an empty element to stream the output into
                         response_container = st.empty()
                         
-                        for chunk in response_stream:
+                        for chunk in response:
                             if chunk.text:
                                 full_response += chunk.text
                                 # Update the container to show the progress
                                 response_container.markdown(full_response)
                         
-                    except APIError as e:
-                        full_response = f"An API Error occurred: {e.message}. Check your API key and usage limits."
-                        st.error(full_response)
                     except Exception as e:
-                        full_response = f"An unexpected error occurred: {e}"
-                        st.exception(e)
+                        full_response = f"An error occurred: {e}"
+                        st.error(full_response)
 
             # 3. Add final, clean AI response to history
             st.session_state.messages.append({"role": "assistant", "content": full_response})

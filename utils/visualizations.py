@@ -1,6 +1,7 @@
 """
 Visualization Utilities Module
 Reusable Plotly chart creation functions
+Updated with Blue Water Theme
 """
 
 import plotly.express as px
@@ -9,39 +10,181 @@ from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
 
+# Import theme system
+try:
+    from utils.theme import get_theme, LIGHT_THEME
+except ImportError:
+    # Fallback if theme module not available
+    LIGHT_THEME = None
+    def get_theme():
+        return None
 
-# HIGH-CONTRAST COLOR PALETTE - WCAG AAA Compliant
-# All colors chosen for maximum readability and accessibility
+
+def get_current_colors():
+    """Get current theme colors with fallback"""
+    theme = get_theme()
+    if theme:
+        return {
+            'good': theme['success'],
+            'acceptable': theme['warning'],
+            'poor': theme['danger'],
+            'primary': theme['primary'],
+            'secondary': theme['secondary'],
+            'tertiary': theme['tertiary'],
+            'text_dark': theme['text_primary'],
+            'text_medium': theme['text_secondary'],
+            'text_light': theme['text_on_primary'],
+            'bg_light': theme['bg_main'],
+            'bg_card': theme['bg_card'],
+            'bg_chart': theme['bg_card'],
+            'border': theme['border'],
+            'grid': theme['chart_grid'],
+            'countries': theme['countries']
+        }
+    # Fallback to static colors
+    return COLORS
+
+
+def apply_high_contrast_text(fig):
+    """
+    Apply high-contrast text settings to charts for better visibility
+    Works in both light and dark modes
+    """
+    colors = get_current_colors()
+    
+    # Update all text elements with high contrast
+    fig.update_layout(
+        font=dict(
+            family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+            size=13,
+            color=colors['text_dark']
+        ),
+        title_font=dict(
+            size=16,
+            color=colors['text_dark'],
+            family="Inter, sans-serif"
+        ),
+        hoverlabel=dict(
+            bgcolor=colors['bg_card'],
+            font_size=12,
+            font_family="Inter, sans-serif",
+            font_color=colors['text_dark']
+        )
+    )
+    
+    # Update axes with high contrast
+    fig.update_xaxes(
+        title_font=dict(color=colors['text_dark'], size=13),
+        tickfont=dict(color=colors['text_dark'], size=11),
+        gridcolor=colors['grid'],
+        linecolor=colors['border']
+    )
+    
+    fig.update_yaxes(
+        title_font=dict(color=colors['text_dark'], size=13),
+        tickfont=dict(color=colors['text_dark'], size=11),
+        gridcolor=colors['grid'],
+        linecolor=colors['border']
+    )
+    
+    return fig
+
+
+# HIGH-CONTRAST COLOR PALETTE - Blue Water Theme
 COLORS = {
-    'good': '#198754',   # Dark green (WCAG AAA)
-    'acceptable': '#fd7e14', # Orange (WCAG AA)
-    'poor': '#dc3545',   # Red (WCAG AAA)
-    'primary': '#0056b3',    # Dark blue (WCAG AAA)
-    'secondary': '#6f42c1',      # Purple (WCAG AA)
-    'tertiary': '#0f6674', # Dark teal (WCAG AAA)
-    'text_dark': '#1e1e1e', # Almost black (text on light)
-    'text_medium': '#333333', # Dark gray (general text)
-    'text_light': '#ffffff', # White (text on dark - not used in light theme)
-    'bg_light': '#ffffff',   # Pure white background
-    'bg_card': '#f8f9fa',   # Light gray card background
-    'bg_chart': '#ffffff',   # Chart background
-    'border': '#dee2e6',     # Light border
-    'grid': '#e9ecef',   # Grid lines
+    'good': '#059669',       # Emerald green (success)
+    'acceptable': '#D97706', # Amber (warning)
+    'poor': '#DC2626',       # Red (danger)
+    'primary': '#113F67',    # Deep Navy
+    'secondary': '#34699A',  # Medium Blue
+    'tertiary': '#58A0C8',   # Sky Blue
+    'text_dark': '#1A202C',  # Almost black
+    'text_medium': '#4A5568',# Dark gray
+    'text_light': '#ffffff', # White
+    'bg_light': '#F0F4F8',   # Light blue-gray
+    'bg_card': '#ffffff',    # White
+    'bg_chart': '#ffffff',   # White
+    'border': '#E2E8F0',     # Light border
+    'grid': '#E2E8F0',       # Grid lines
     'countries': {
-        'Uganda': '#dc3545',     # Red
-        'Cameroon': '#0056b3', # Blue
-        'Lesotho': '#198754',   # Green
-        'Malawi': '#fd7e14'      # Orange
+        'Uganda': '#DC2626',     # Red
+        'Cameroon': '#059669',   # Green
+        'Lesotho': '#7C3AED',    # Purple
+        'Malawi': '#D97706'      # Orange
     }
 }
 
 # STANDARD LAYOUT - Applied to ALL charts for consistency
 # Ensures dark text on light background for maximum readability
+def get_standard_layout():
+    """Get standard layout with current theme colors"""
+    colors = get_current_colors()
+    return {
+        'paper_bgcolor': colors['bg_chart'],
+        'plot_bgcolor': colors['bg_chart'],
+        'font': {
+            'family': 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+            'size': 13,
+            'color': colors['text_dark']
+        },
+        'title': {
+            'font': {
+                'size': 18,
+                'color': colors['text_dark'],
+                'family': 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+            },
+            'x': 0.5,
+            'xanchor': 'center'
+        },
+        'xaxis': {
+            'title': {
+                'font': {
+                    'color': colors['text_dark'],
+                    'size': 13,
+                }
+            },
+            'tickfont': {
+                'color': colors['text_dark'],
+                'size': 12
+            },
+            'gridcolor': colors['grid'],
+            'showgrid': True,
+            'linecolor': colors['border']
+        },
+        'yaxis': {
+            'title': {
+                'font': {
+                    'color': colors['text_dark'],
+                    'size': 13,
+                }
+            },
+            'tickfont': {
+                'color': colors['text_dark'],
+                'size': 12
+            },
+            'gridcolor': colors['grid'],
+            'showgrid': True,
+            'linecolor': colors['border']
+        },
+        'legend': {
+            'font': {
+                'color': colors['text_dark'],
+                'size': 12
+            },
+            'bgcolor': 'rgba(255, 255, 255, 0.9)',
+            'bordercolor': colors['border'],
+            'borderwidth': 1
+        },
+        'margin': {'l': 60, 'r': 30, 't': 80, 'b': 60}
+    }
+
+
+# Static version for backwards compatibility
 STANDARD_LAYOUT = {
     'paper_bgcolor': COLORS['bg_chart'],
     'plot_bgcolor': COLORS['bg_chart'],
     'font': {
-        'family': 'Arial, Helvetica, sans-serif',
+        'family': 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
         'size': 13,
         'color': COLORS['text_dark']
     },
@@ -49,8 +192,7 @@ STANDARD_LAYOUT = {
         'font': {
             'size': 18,
             'color': COLORS['text_dark'],
-            'family': 'Arial, Helvetica, sans-serif',
-            'weight': 600
+            'family': 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
         },
         'x': 0.5,
         'xanchor': 'center'
@@ -60,7 +202,6 @@ STANDARD_LAYOUT = {
             'font': {
                 'color': COLORS['text_dark'],
                 'size': 13,
-                'weight': 600
             }
         },
         'tickfont': {
@@ -76,7 +217,6 @@ STANDARD_LAYOUT = {
             'font': {
                 'color': COLORS['text_dark'],
                 'size': 13,
-                'weight': 600
             }
         },
         'tickfont': {
@@ -188,40 +328,43 @@ def create_kpi_card(title, value, benchmark, unit='%', inverse=False):
             {'range': [acceptable_start, gauge_max], 'color': "rgba(25, 135, 84, 0.15)"} # Good (Dark Green)
         ]
 
-    # Create gauge chart with improved styling
+    # Get theme-aware colors
+    current_colors = get_current_colors()
+    
+    # Create gauge chart with improved styling and high contrast
     fig = go.Figure(go.Indicator(
         mode="gauge+number+delta",
         value=value,
         domain={'x': [0, 1], 'y': [0, 1]},
         title={
             'text': f"<b>{title}</b>",
-            'font': {'size': 14, 'color': COLORS['text_dark']}
+            'font': {'size': 16, 'color': current_colors['text_dark'], 'family': 'Inter, sans-serif'}
         },
         delta={
             'reference': benchmark,
-            'font': {'size': 12},
-            'increasing': {'color': COLORS['good'] if not inverse else COLORS['poor']},
-            'decreasing': {'color': COLORS['poor'] if not inverse else COLORS['good']},
+            'font': {'size': 13, 'color': current_colors['text_dark'], 'family': 'Inter, sans-serif'},
+            'increasing': {'color': current_colors['good'] if not inverse else current_colors['poor']},
+            'decreasing': {'color': current_colors['poor'] if not inverse else current_colors['good']},
             'valueformat': '.1f',
             'relative': False # Use absolute difference, not percentage
         },
         number={
             'suffix': unit_suffix,
-            'font': {'size': 28, 'color': color},
+            'font': {'size': 32, 'color': color, 'family': 'Inter, sans-serif'},
             'valueformat': '.1f'
         },
         gauge={
             'axis': {
                 'range': [0, gauge_max], # Dynamic range
                 'tickwidth': 2,
-                'tickcolor': COLORS['text_dark'],
-                'tickfont': {'size': 10, 'color': COLORS['text_dark']} # Smaller ticks
+                'tickcolor': current_colors['text_dark'],
+                'tickfont': {'size': 11, 'color': current_colors['text_dark'], 'family': 'Inter, sans-serif'}
             },
             'bar': {'color': color, 'thickness': 0.8},
-            'bgcolor': 'rgba(240, 240, 240, 0.5)',
+            'bgcolor': 'rgba(148, 163, 184, 0.2)',
             'steps': steps,
             'threshold': {
-                'line': {'color': COLORS['text_dark'], 'width': 3},
+                'line': {'color': current_colors['text_dark'], 'width': 3},
                 'thickness': 0.8,
                 'value': benchmark
             }

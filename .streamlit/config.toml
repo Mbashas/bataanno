@@ -1,9 +1,9 @@
 [theme]
-# Light theme with high contrast for maximum readability
-primaryColor = "#1C6BA0"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F8F9FA"
-textColor = "#1E1E1E"
+# Blue Water Theme - Professional Soft Blue
+primaryColor = "#113F67"
+backgroundColor = "#F0F7FA"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#1A202C"
 font = "sans serif"
 
 [server]
