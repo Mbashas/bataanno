@@ -297,8 +297,9 @@ def render_access_page(data, countries_filter, date_range=None):
     zone_coverage = w_access_latest.copy()
     zone_coverage['coverage'] = (
         (zone_coverage['safely_managed'] + zone_coverage['basic']) / 
-        zone_coverage['popn_total'] * 100
+        zone_coverage['popn_total'].replace({0: np.nan}) * 100
     )
+    zone_coverage['coverage'] = zone_coverage['coverage'].fillna(0)  # Replace NaN with 0 for display
     worst_zones = zone_coverage.nsmallest(15, 'coverage')[['country', 'zone', 'coverage', 'popn_total']]
     
     fig = px.bar(

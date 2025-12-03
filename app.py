@@ -69,6 +69,9 @@ def initialize_session_state():
         st.session_state.user_role = None
     if 'user_country' not in st.session_state:
         st.session_state.user_country = None
+    # Currency mode: 'local' or 'usd'
+    if 'currency_mode' not in st.session_state:
+        st.session_state.currency_mode = 'local'
 
 
 def load_auth_config():

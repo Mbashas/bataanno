@@ -332,40 +332,42 @@ def create_kpi_card(title, value, benchmark, unit='%', inverse=False):
     current_colors = get_current_colors()
     
     # Create gauge chart with improved styling and high contrast
+    # Use domain to push gauge down and leave space for text above
     fig = go.Figure(go.Indicator(
         mode="gauge+number+delta",
         value=value,
-        domain={'x': [0, 1], 'y': [0, 1]},
+        domain={'x': [0, 1], 'y': [0, 0.85]},  # Push gauge down to leave room for title
         title={
             'text': f"<b>{title}</b>",
-            'font': {'size': 16, 'color': current_colors['text_dark'], 'family': 'Inter, sans-serif'}
+            'font': {'size': 14, 'color': current_colors['text_dark'], 'family': 'Inter, sans-serif'}
         },
         delta={
             'reference': benchmark,
-            'font': {'size': 13, 'color': current_colors['text_dark'], 'family': 'Inter, sans-serif'},
+            'font': {'size': 11, 'color': current_colors['text_dark'], 'family': 'Inter, sans-serif'},
             'increasing': {'color': current_colors['good'] if not inverse else current_colors['poor']},
             'decreasing': {'color': current_colors['poor'] if not inverse else current_colors['good']},
             'valueformat': '.1f',
-            'relative': False # Use absolute difference, not percentage
+            'relative': False,  # Use absolute difference, not percentage
+            'position': 'bottom'  # Position delta below the number
         },
         number={
             'suffix': unit_suffix,
-            'font': {'size': 32, 'color': color, 'family': 'Inter, sans-serif'},
+            'font': {'size': 26, 'color': color, 'family': 'Inter, sans-serif'},
             'valueformat': '.1f'
         },
         gauge={
             'axis': {
-                'range': [0, gauge_max], # Dynamic range
+                'range': [0, gauge_max],  # Dynamic range
                 'tickwidth': 2,
                 'tickcolor': current_colors['text_dark'],
-                'tickfont': {'size': 11, 'color': current_colors['text_dark'], 'family': 'Inter, sans-serif'}
+                'tickfont': {'size': 10, 'color': current_colors['text_dark'], 'family': 'Inter, sans-serif'}
             },
-            'bar': {'color': color, 'thickness': 0.8},
+            'bar': {'color': color, 'thickness': 0.75},
             'bgcolor': 'rgba(148, 163, 184, 0.2)',
             'steps': steps,
             'threshold': {
                 'line': {'color': current_colors['text_dark'], 'width': 3},
-                'thickness': 0.8,
+                'thickness': 0.75,
                 'value': benchmark
             }
         }
@@ -373,18 +375,19 @@ def create_kpi_card(title, value, benchmark, unit='%', inverse=False):
     
     # 4. Update Layout (FIXED: Removed 'config')
     fig.update_layout(
-        height=200, 
-        margin=dict(l=15, r=15, t=40, b=15), 
+        height=220,  # Slightly taller to accommodate all elements
+        margin=dict(l=20, r=20, t=50, b=40),  # More top/bottom margin for text
         paper_bgcolor=COLORS['bg_light'],
         plot_bgcolor=COLORS['bg_light'],
         font={'color': COLORS['text_dark'], 'family': 'Arial, sans-serif'},
         annotations=[
             dict(
                 text=f"<b style='color:{COLORS['text_dark']}'>{status}</b><br><span style='color:#666666; font-size:9px'>{target_text}</span>",
-                x=0.5, y=-0.08,
+                x=0.5, y=-0.02,  # Move annotation up slightly
                 showarrow=False,
                 font=dict(size=10, color=COLORS['text_dark']),
-                xanchor='center'
+                xanchor='center',
+                yanchor='top'
             )
         ]
         # REMOVED: config={'displayModeBar': False} 
@@ -614,8 +617,8 @@ def create_cost_recovery_dashboard(finance_df): # <-- CORRECTED NAME
             [{'type': 'bar'}, {'type': 'heatmap'}],
             [{'type': 'bar'}, {'type': 'scatter'}]
         ],
-        vertical_spacing=0.20,
-        horizontal_spacing=0.15
+        vertical_spacing=0.18,
+        horizontal_spacing=0.12
     )
     
     # Top Left: Bar chart (Trace 0)
@@ -729,7 +732,7 @@ def create_cost_recovery_dashboard(finance_df): # <-- CORRECTED NAME
     fig.update_yaxes(title_text="OCCR (%)", row=2, col=2)
     
     # Update subplot title styling to prevent overlap and improve readability
-    fig.update_annotations(font=dict(size=13, color=COLORS['text_dark']), yshift=-20)
+    fig.update_annotations(font=dict(size=13, color=COLORS['text_dark']), yshift=5)
 
     # Create layout without conflicting keys (FIXED: Removed 'config')
     layout = STANDARD_LAYOUT.copy()
@@ -737,14 +740,14 @@ def create_cost_recovery_dashboard(finance_df): # <-- CORRECTED NAME
     layout.pop('title', None)
     
     layout.update({
-        'height': 850,
+        'height': 900,
         'title': {
             'text': "<b>Cost Recovery Performance Dashboard (OCCR)</b>", # Updated title for clarity
             'font': {'size': 20, 'color': COLORS['text_dark']},
             'x': 0.5, 'xanchor': 'center',
             'y': 0.98, 'yanchor': 'top'
         },
-        'margin': {'t': 90, 'b': 80, 'l': 60, 'r': 60},
+        'margin': {'t': 100, 'b': 80, 'l': 60, 'r': 60},
         'showlegend': True,
         'legend': {
             'orientation': "h", 'yanchor': "bottom", 'y': -0.15,
