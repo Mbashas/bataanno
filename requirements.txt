@@ -23,3 +23,5 @@ openpyxl>=3.1.0  # For Excel export
 xlsxwriter>=3.1.0  # For Excel formatting
 fpdf2>=2.7.5  # PDF report generation
 
+pyyaml>=6.0  # For configuration file handling
+
