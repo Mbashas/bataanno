@@ -65,10 +65,14 @@ Thumbs.db
 # Ignore all markdown files except README.md
 *.md
 !README.md
-
+!CALCULATIONS_GUIDE.md
 # Generated PDF reports
 *.pdf
 water_services_performance_report.pdf
 
 .streamlit/secrets.toml
 generate_password.py
+.streamlit/secrets.toml
+.streamlit/secrets.toml
+.gitignore
+.streamlit/secrets.toml

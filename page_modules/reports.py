@@ -365,10 +365,10 @@ def render_reports_page(data, countries_filter, date_range=None):
         kpis = calculate_country_kpis(data, country)
         performance_data.append({
             'Country': country,
-            'Water Coverage': kpis['water_coverage'],
+            'Water Coverage': kpis['water_service_coverage'],
             'Sanitation Coverage': kpis['sanitation_coverage'],
             'NRW': kpis['nrw'],
-            'OCCR': kpis['occr'],
+            'OCCR': kpis['cost_recovery_ratio'],
             'Collection Efficiency': kpis['collection_efficiency']
         })
     

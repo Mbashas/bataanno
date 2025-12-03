@@ -11,7 +11,18 @@ from plotly.subplots import make_subplots
 import numpy as np
 from utils.kpi_calculator import calculate_cost_recovery_ratio, calculate_collection_efficiency
 from utils.visualizations import create_cost_recovery_dashboard, create_waterfall_chart, COLORS
-from utils.currency_config import format_currency_multi_country, get_currency_label
+from utils.currency_config import (
+    format_currency_multi_country, 
+    get_currency_label,
+    format_currency_auto,
+    is_usd_mode,
+    toggle_currency_mode,
+    get_currency_mode_label,
+    convert_to_usd,
+    format_usd,
+    CURRENCY_CONFIG,
+    EXCHANGE_RATE_DATE
+)
 
 
 def render_finance_page(data, countries_filter, date_range=None):
@@ -26,15 +37,37 @@ def render_finance_page(data, countries_filter, date_range=None):
     if countries_filter:
         finance_df = finance_df[finance_df['country'].isin(countries_filter)]
     
-    # Currency context banner
+    # Get selected countries for currency formatting
     selected_countries = finance_df['country'].unique().tolist() if not finance_df.empty else []
-    if len(selected_countries) == 1:
-        currency_label = get_currency_label(selected_countries[0])
-        st.info(f"💱 **Currency Context:** All financial metrics displayed in {currency_label}")
-    elif len(selected_countries) > 1:
-        from utils.currency_config import CURRENCY_CONFIG
-        currencies = ', '.join([CURRENCY_CONFIG.get(c, {}).get('symbol', 'LCU') for c in selected_countries])
-        st.warning(f"💱 **Multi-Currency View:** Data includes {currencies}. Values are in local currencies and NOT directly comparable without conversion.")
+    
+    # ========================================================================
+    # USD CONVERSION TOGGLE
+    # ========================================================================
+    col_banner, col_toggle = st.columns([4, 1])
+    
+    with col_banner:
+        # Currency context banner - updated to show current mode
+        if is_usd_mode():
+            st.success(f"💵 **USD Mode Active:** All values converted to US Dollars (Exchange rates from {EXCHANGE_RATE_DATE})")
+        elif len(selected_countries) == 1:
+            currency_label = get_currency_label(selected_countries[0])
+            st.info(f"💱 **Currency Context:** All financial metrics displayed in {currency_label}")
+        elif len(selected_countries) > 1:
+            currencies = ', '.join([CURRENCY_CONFIG.get(c, {}).get('symbol', 'LCU') for c in selected_countries])
+            st.warning(f"💱 **Multi-Currency View:** Data includes {currencies}. Values are in local currencies and NOT directly comparable without conversion. **Toggle USD mode for comparison.**")
+    
+    with col_toggle:
+        # USD Toggle Button
+        if is_usd_mode():
+            button_label = "🌍 Show Local"
+            button_help = "Switch to local currencies"
+        else:
+            button_label = "💵 Show USD"
+            button_help = "Convert all values to USD for comparison"
+        
+        if st.button(button_label, key="usd_toggle", help=button_help, use_container_width=True):
+            toggle_currency_mode()
+            st.rerun()
     
     st.markdown("---")
     
@@ -47,23 +80,30 @@ def render_finance_page(data, countries_filter, date_range=None):
     total_opex = finance_df['opex'].sum()
     uncollected = total_billed - total_revenue
     
-    # Get selected countries for currency formatting
+    # Get selected countries for currency formatting (already defined above, but refresh for this section)
     selected_countries = finance_df['country'].unique().tolist() if not finance_df.empty else []
+    
+    # Helper for currency display based on mode
+    def fmt_currency(value):
+        return format_currency_auto(value, selected_countries)
+    
+    # Currency help text based on mode
+    currency_help = "USD equivalent" if is_usd_mode() else "local currency"
     
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         st.metric(
             "Total Billed",
-            format_currency_multi_country(total_billed, selected_countries),
-            help="Total amount billed to customers (local currency)"
+            fmt_currency(total_billed),
+            help=f"Total amount billed to customers ({currency_help})"
         )
     
     with col2:
         st.metric(
             "Revenue Collected",
-            format_currency_multi_country(total_revenue, selected_countries),
-            help="Total revenue collected from customers (local currency)"
+            fmt_currency(total_revenue),
+            help=f"Total revenue collected from customers ({currency_help})"
         )
     
     with col3:
@@ -94,25 +134,25 @@ def render_finance_page(data, countries_filter, date_range=None):
     with col5:
         st.metric(
             "Operating Expenses",
-            format_currency_multi_country(total_opex, selected_countries),
-            help="Total operational expenditure (local currency)"
+            fmt_currency(total_opex),
+            help=f"Total operational expenditure ({currency_help})"
         )
     
     with col6:
         surplus_deficit = total_revenue - total_opex
         st.metric(
             "Operating Surplus/Deficit",
-            format_currency_multi_country(surplus_deficit, selected_countries),
+            fmt_currency(surplus_deficit),
             delta_color="normal" if surplus_deficit >= 0 else "inverse",
-            help="Revenue minus operating expenses (local currency)"
+            help=f"Revenue minus operating expenses ({currency_help})"
         )
     
     with col7:
         st.metric(
             "Uncollected Revenue",
-            format_currency_multi_country(uncollected, selected_countries),
+            fmt_currency(uncollected),
             delta_color="inverse",
-            help="Billed amount not yet collected (local currency)"
+            help=f"Billed amount not yet collected ({currency_help})"
         )
     
     with col8:
@@ -149,7 +189,9 @@ def render_finance_page(data, countries_filter, date_range=None):
         cols=cols,
         subplot_titles=[f"{country}" for country in countries[:4]],
         specs=[[{'type': 'waterfall'}, {'type': 'waterfall'}],
-               [{'type': 'waterfall'}, {'type': 'waterfall'}]]
+               [{'type': 'waterfall'}, {'type': 'waterfall'}]],
+        vertical_spacing=0.15,
+        horizontal_spacing=0.12
     )
     
     for idx, country in enumerate(countries[:4]):
@@ -164,6 +206,24 @@ def render_finance_page(data, countries_filter, date_range=None):
         row = (idx // 2) + 1
         col = (idx % 2) + 1
         
+        # Convert values based on currency mode
+        if is_usd_mode():
+            # Convert to USD
+            billed_disp = convert_to_usd(billed, country) / 1e6
+            uncollected_disp = convert_to_usd(uncollected, country) / 1e6
+            opex_disp = convert_to_usd(opex, country) / 1e6
+            surplus_disp = convert_to_usd(surplus, country) / 1e6
+            symbol = "$"
+        else:
+            # Use local currency (scale to billions for local)
+            billed_disp = billed / 1e9
+            uncollected_disp = uncollected / 1e9
+            opex_disp = opex / 1e9
+            surplus_disp = surplus / 1e9
+            symbol = CURRENCY_CONFIG.get(country, {}).get('symbol', 'LCU')
+        
+        suffix = "M" if is_usd_mode() else "B"
+        
         fig.add_trace(
             go.Waterfall(
                 name=country,
@@ -175,17 +235,22 @@ def render_finance_page(data, countries_filter, date_range=None):
                 decreasing={"marker": {"color": COLORS['poor']}},
                 increasing={"marker": {"color": COLORS['good']}},
                 totals={"marker": {"color": COLORS['primary'] if surplus >= 0 else COLORS['poor']}},
-                text=[f"${billed/1e6:.1f}M", f"-${uncollected/1e6:.1f}M", f"-${opex/1e6:.1f}M", f"${surplus/1e6:.1f}M"],
-                textposition="outside"
+                text=[f"{symbol}{billed_disp:.1f}{suffix}", f"-{symbol}{uncollected_disp:.1f}{suffix}", f"-{symbol}{opex_disp:.1f}{suffix}", f"{symbol}{surplus_disp:.1f}{suffix}"],
+                textposition="outside",
+                textfont=dict(size=10)
             ),
             row=row,
             col=col
         )
     
+    # Update subplot titles to prevent overlap
+    fig.update_annotations(font=dict(size=14), yshift=10)
+    
     fig.update_layout(
-        height=800,
+        height=850,
         title_text="Financial Flow: Billed → Revenue → Operating Surplus/Deficit",
-        showlegend=False
+        showlegend=False,
+        margin=dict(t=80, b=60, l=60, r=40)
     )
     
     st.plotly_chart(fig, width='stretch')
@@ -232,7 +297,7 @@ def render_finance_page(data, countries_filter, date_range=None):
             title='Revenue vs Operating Expenses Over Time',
             height=400,
             hovermode='x unified',
-            yaxis_title='Amount ($)',
+            yaxis_title='Amount (USD)' if is_usd_mode() else 'Amount (Local Currency)',
             xaxis_title='Date'
         )
         
@@ -434,12 +499,17 @@ def render_finance_page(data, countries_filter, date_range=None):
         potential_recovery = uncollected * 0.9  # Assume 90% could be recovered
         current_gap = total_opex * 1.1 - total_revenue  # 110% OCCR target
         
+        # Format values based on currency mode
+        uncollected_fmt = fmt_currency(uncollected)
+        recovery_fmt = fmt_currency(potential_recovery)
+        gap_fmt = fmt_currency(max(0, current_gap))
+        
         st.info(f"""
             **Revenue Recovery Potential:**
             
-            - **Current uncollected revenue**: ${uncollected / 1_000_000:.2f}M
-            - **Potential recovery (90%)**: ${potential_recovery / 1_000_000:.2f}M
-            - **Current OCCR gap**: ${max(0, current_gap) / 1_000_000:.2f}M
+            - **Current uncollected revenue**: {uncollected_fmt}
+            - **Potential recovery (90%)**: {recovery_fmt}
+            - **Current OCCR gap**: {gap_fmt}
             
             **If collection efficiency improves to 95%:**
             - Projected OCCR: **{((total_revenue + potential_recovery) / total_opex * 100):.1f}%**
@@ -569,8 +639,23 @@ def render_finance_page(data, countries_filter, date_range=None):
         # Zone comparison table
         st.subheader("Zone Performance Details")
         display_df = payment_by_zone.copy()
-        display_df['total_billed'] = display_df['total_billed'].apply(lambda x: f"${x/1e6:.2f}M")
-        display_df['total_paid'] = display_df['total_paid'].apply(lambda x: f"${x/1e6:.2f}M")
+        
+        # Format currency based on mode
+        if is_usd_mode():
+            # Need to convert each row based on its country
+            def format_billed_usd(row):
+                usd_val = convert_to_usd(row['total_billed'], row['country'])
+                return f"${usd_val/1e6:.2f}M"
+            def format_paid_usd(row):
+                usd_val = convert_to_usd(row['total_paid'], row['country'])
+                return f"${usd_val/1e6:.2f}M"
+            display_df['total_billed'] = display_df.apply(format_billed_usd, axis=1)
+            display_df['total_paid'] = display_df.apply(format_paid_usd, axis=1)
+        else:
+            display_df['total_billed'] = display_df.apply(
+                lambda row: f"{row['total_billed']/1e9:.2f}B {CURRENCY_CONFIG.get(row['country'], {}).get('symbol', 'LCU')}", axis=1)
+            display_df['total_paid'] = display_df.apply(
+                lambda row: f"{row['total_paid']/1e9:.2f}B {CURRENCY_CONFIG.get(row['country'], {}).get('symbol', 'LCU')}", axis=1)
         display_df['collection_rate'] = display_df['collection_rate'].apply(lambda x: f"{x:.1f}%")
         
         st.dataframe(
@@ -642,14 +727,18 @@ def render_finance_page(data, countries_filter, date_range=None):
                 labels=risk_counts.index,
                 values=risk_counts.values,
                 hole=0.3,
-                marker=dict(colors=[COLORS['poor'], COLORS['acceptable'], COLORS['good']])
+                marker=dict(colors=[COLORS['poor'], COLORS['acceptable'], COLORS['good']]),
+                textinfo='label+percent',
+                textposition='outside',
+                textfont=dict(size=11)
             )])
             
             fig.update_layout(
                 title='Customer Distribution by Risk Category',
-                height=400,
+                height=450,
                 paper_bgcolor=COLORS['bg_chart'],
-                font={'color': COLORS['text_dark']}
+                font={'color': COLORS['text_dark']},
+                margin=dict(t=60, b=40, l=40, r=40)
             )
             
             st.plotly_chart(fig, width='stretch')
@@ -669,7 +758,7 @@ def render_finance_page(data, countries_filter, date_range=None):
                     'Low Risk': COLORS['good']
                 },
                 title='Total Unpaid Amount by Risk Category',
-                labels={'unpaid_amount': 'Unpaid Amount ($)', 'risk_category': 'Risk Category'}
+                labels={'unpaid_amount': 'Unpaid Amount (USD)' if is_usd_mode() else 'Unpaid Amount (Local)', 'risk_category': 'Risk Category'}
             )
             
             fig.update_layout(
@@ -692,13 +781,13 @@ def render_finance_page(data, countries_filter, date_range=None):
             color='zone',
             hover_data=['country', 'billed', 'paid', 'payment_ratio'],
             title='Top 10 Customers by Unpaid Amount',
-            labels={'unpaid_amount': 'Unpaid Amount ($)', 'customer_id': 'Customer ID'}
+            labels={'unpaid_amount': 'Unpaid Amount (USD)' if is_usd_mode() else 'Unpaid Amount (Local)', 'customer_id': 'Customer ID'}
         )
         
         fig.update_layout(
             height=500,
             xaxis_title='Customer ID',
-            yaxis_title='Unpaid Amount ($)',
+            yaxis_title='Unpaid Amount (USD)' if is_usd_mode() else 'Unpaid Amount (Local)',
             paper_bgcolor=COLORS['bg_chart'],
             plot_bgcolor=COLORS['bg_chart'],
             font={'color': COLORS['text_dark']}
@@ -710,10 +799,16 @@ def render_finance_page(data, countries_filter, date_range=None):
         high_risk_unpaid = risk_customers[risk_customers['risk_category'] == 'High Risk']['unpaid_amount'].sum()
         top_zones = risk_customers[risk_customers['risk_category'] == 'High Risk'].groupby('zone').size().nlargest(3).index.tolist()
         
+        # Format high risk unpaid based on currency mode
+        if is_usd_mode() and selected_countries:
+            high_risk_unpaid_fmt = format_usd(convert_to_usd(high_risk_unpaid, selected_countries[0]))
+        else:
+            high_risk_unpaid_fmt = fmt_currency(high_risk_unpaid)
+        
         st.info(f"""
         **💡 Recommended Actions:**
         - **Immediate Priority**: Contact {high_risk_count:,} high-risk customers for payment follow-up
-        - **Potential Revenue Recovery**: ${high_risk_unpaid/1e6:.2f}M from high-risk customers
+        - **Potential Revenue Recovery**: {high_risk_unpaid_fmt} from high-risk customers
         - **Focus Zones**: {', '.join(top_zones[:3])}
         """)
     else:
@@ -787,7 +882,8 @@ def render_finance_page(data, countries_filter, date_range=None):
                 hole=0.4,
                 marker=dict(colors=[COLORS['poor'], '#ff7043', COLORS['good']]),
                 textinfo='label+percent',
-                textposition='outside'
+                textposition='outside',
+                textfont=dict(size=11)
             )])
             
             fig.update_layout(
@@ -795,7 +891,8 @@ def render_finance_page(data, countries_filter, date_range=None):
                 height=500,
                 showlegend=True,
                 paper_bgcolor=COLORS['bg_chart'],
-                font={'color': COLORS['text_dark']}
+                font={'color': COLORS['text_dark']},
+                margin=dict(t=60, b=40, l=60, r=60)
             )
             
             st.plotly_chart(fig, width='stretch')

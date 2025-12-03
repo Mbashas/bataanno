@@ -7,6 +7,24 @@ import pandas as pd
 import numpy as np
 
 
+# --- BENCHMARK CONSTANTS ---
+# Centralized benchmarks to ensure consistency across all modules
+BENCHMARKS = {
+    'cost_recovery_ratio': 100,      # >= 100% to cover operating costs
+    'collection_efficiency': 95,      # >= 95% target collection
+    'nrw': 25,                        # <= 25% non-revenue water
+    'water_coverage': 100,            # Target 100% coverage
+    'sanitation_coverage': 100,       # Target 100% coverage
+    'service_hours': 24,              # 24 hours/day target
+    'water_quality': 95,              # >= 95% compliance
+    'metering_ratio': 95,             # >= 95% metered
+    'complaint_resolution': 90,       # >= 90% resolved
+    'staff_productivity': 7,          # <= 7 staff/1000 connections
+    'personnel_cost_ratio': 35,       # <= 35% of O&M
+    'complaint_resolution_time': 5,   # <= 5 days
+}
+
+
 # --- CORE CALCULATIONS ---
 
 def calculate_cost_recovery_ratio(revenue, opex):
@@ -206,13 +224,14 @@ def calculate_complaints_kpis(finance_df, national_df):
     Average Resolution Time (from national data).
     
     Assumes: 
-    1. 'total_complaints' in finance_df (from all_fin_service.csv)
+    1. 'complaints' in finance_df (from all_fin_service.csv)
     2. 'complaint_resolution' in national_df (from all_national.csv)
     """
     # 1. Total Reported Complaints (Count)
-    TOTAL_COMPLAINTS_COL = 'total_complaints' 
-    if not finance_df.empty and TOTAL_COMPLAINTS_COL in finance_df.columns:
-        total_complaints = finance_df[TOTAL_COMPLAINTS_COL].sum()
+    # Note: Data uses 'complaints' column, not 'total_complaints'
+    COMPLAINTS_COL = 'complaints' 
+    if not finance_df.empty and COMPLAINTS_COL in finance_df.columns:
+        total_complaints = finance_df[COMPLAINTS_COL].sum()
     else:
         total_complaints = 0
     

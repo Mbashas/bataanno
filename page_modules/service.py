@@ -121,10 +121,10 @@ def render_service_page(data, countries_filter, date_range=None):
     }).reset_index()
     
     quality_trend['chlorine_rate'] = (
-        quality_trend['test_passed_chlorine'] / quality_trend['tests_conducted_chlorine'] * 100
+        quality_trend['test_passed_chlorine'] / quality_trend['tests_conducted_chlorine'].replace({0: np.nan}) * 100
     )
     quality_trend['ecoli_rate'] = (
-        quality_trend['tests_passed_ecoli'] / quality_trend['test_conducted_ecoli'] * 100
+        quality_trend['tests_passed_ecoli'] / quality_trend['test_conducted_ecoli'].replace({0: np.nan}) * 100
     )
     
     chlorine_by_country = w_service.groupby('country').agg({
