@@ -135,70 +135,7 @@ def render_service_page(data, countries_filter, date_range=None):
         quality_trend['tests_passed_ecoli'] / quality_trend['test_conducted_ecoli'].replace({0: np.nan}) * 100
     )
     
-    chlorine_by_country = w_service.groupby('country').agg({
-        'test_passed_chlorine': 'sum',
-        'tests_conducted_chlorine': 'sum'
-    }).reset_index()
-    chlorine_by_country['compliance_rate'] = (
-        chlorine_by_country['test_passed_chlorine'] /
-        chlorine_by_country['tests_conducted_chlorine'].replace({0: np.nan})
-    ) * 100
-
-    ecoli_by_country = w_service.groupby('country').agg({
-        'tests_passed_ecoli': 'sum',
-        'test_conducted_ecoli': 'sum'
-    }).reset_index()
-    ecoli_by_country['compliance_rate'] = (
-        ecoli_by_country['tests_passed_ecoli'] /
-        ecoli_by_country['test_conducted_ecoli'].replace({0: np.nan})
-    ) * 100
-
-    countries_available = sorted(chlorine_by_country['country'].unique())
-
-    if len(countries_available) == 0:
-        st.info("Water quality testing data is not available for the selected filters.")
-    else:
-        # Simplified water quality summary (removed gauge charts per feedback)
-        st.subheader("Water Quality Compliance Summary")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Chlorine compliance bar chart
-            fig = px.bar(
-                chlorine_by_country,
-                x='country',
-                y='compliance_rate',
-                title='Chlorine Test Pass Rate',
-                color='compliance_rate',
-                color_continuous_scale='RdYlGn',
-                labels={'compliance_rate': 'Pass Rate (%)', 'country': 'Country'}
-            )
-            fig.add_hline(y=95, line_dash="dash", line_color="red", annotation_text="95% Target")
-            fig.update_layout(height=350, showlegend=False)
-            show_chart(fig, use_container_width=True)
-        
-        with col2:
-            # E.coli compliance bar chart
-            fig = px.bar(
-                ecoli_by_country,
-                x='country',
-                y='compliance_rate',
-                title='E.coli Test Pass Rate',
-                color='compliance_rate',
-                color_continuous_scale='RdYlGn',
-                labels={'compliance_rate': 'Pass Rate (%)', 'country': 'Country'}
-            )
-            fig.add_hline(y=95, line_dash="dash", line_color="red", annotation_text="95% Target")
-            fig.update_layout(height=350, showlegend=False)
-            show_chart(fig, use_container_width=True)
-        
-        # Summary metrics
-        avg_chlorine = chlorine_by_country['compliance_rate'].mean()
-        avg_ecoli = ecoli_by_country['compliance_rate'].mean()
-        st.caption(f"Average Chlorine Compliance: {avg_chlorine:.1f}% | Average E.coli Compliance: {avg_ecoli:.1f}%")
-    
-    # Removed choropleth map per feedback - Hours of Supply is shown in Production tab
+    # DELETED: Country-level water quality bar charts and associated data calculations.
     
     # Quality trends over time
     st.subheader("Water Quality Trends Over Time")
@@ -367,7 +304,7 @@ def render_service_page(data, countries_filter, date_range=None):
     # Complaints Analysis
     st.header("📞 Complaints and Resolution")
     
-    # Complaints by country
+    # Complaints by country (data calculation kept for trend chart)
     complaints_by_country = finance.groupby('country').agg({
         'complaints': 'sum',
         'resolved': 'sum'
@@ -379,20 +316,11 @@ def render_service_page(data, countries_filter, date_range=None):
         complaints_by_country['complaints'] - complaints_by_country['resolved']
     )
     
-    # Summary metrics (kept, but removed by-country charts)
-    total_complaints_val = complaints_by_country['complaints'].sum()
-    total_resolved = complaints_by_country['resolved'].sum()
-    overall_resolution = (total_resolved / total_complaints_val * 100) if total_complaints_val > 0 else 0
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Total Complaints", f"{total_complaints_val:,.0f}")
-    with col2:
-        st.metric("Resolved", f"{total_resolved:,.0f}")
-    with col3:
-        st.metric("Resolution Rate", f"{overall_resolution:.1f}%", delta="Target: 90%")
+    # DELETED: Total Complaints, Resolved, Overall Resolution Metrics
     
     # Complaints trend over time (kept per feedback)
+    st.subheader("Complaint and Resolution Trend")
+    
     complaints_trend = finance.groupby('date').agg({
         'complaints': 'sum',
         'resolved': 'sum'
@@ -490,4 +418,3 @@ def render_service_page(data, countries_filter, date_range=None):
     # Generate AI insights - only shows if AI is available
     ai_insights = generate_service_insights(service_ai_data, country_context) if is_ai_available() else None
     render_ai_insights(ai_insights, "🤖 AI-Powered Service Analysis")
-
