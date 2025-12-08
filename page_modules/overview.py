@@ -330,8 +330,8 @@ def render_overview_page(data, countries_filter, date_range=None):
             st.markdown(ai_insights_markdown)
         # If no AI insights available, show nothing (no fallback)
     
-    # --- 2. AI Chat Assistant Implementation (FIXED VISUAL FLOW) ---
-    
+ # --- 2. AI Chat Assistant Implementation (FINAL, SINGLE COLUMN FIX) ---
+
     st.markdown("---")
     st.subheader("💬 AI Data Assistant")
 
@@ -357,10 +357,31 @@ def render_overview_page(data, countries_filter, date_range=None):
     chat = st.session_state.chat_session
 
     if chat:
-        # --- PHASE 0: Suggested Prompts and Welcome Message ---
+        
+        # --- PHASE 0: Suggested Prompts (TOP ROW) ---
 
+        suggested_prompts = [
+            "What is the biggest operational challenge (NRW)?",
+            "How does low Revenue Collection affect profit/loss?",
+            "Where can I find the Service Continuity trend?",
+        ]
+
+        # Use columns for horizontal layout of buttons (TOP ROW)
+        cols_prompts = st.columns(3)
+        for i, (col, prompt_text) in enumerate(zip(cols_prompts, suggested_prompts)):
+            # Ensure unique key for each button
+            if col.button(prompt_text, use_container_width=True, key=f"top_btn_{i}"): 
+                st.session_state.input_prompt = prompt_text
+                st.rerun()
+                
+        # Determine if we are waiting for an AI response
+        is_waiting_for_response = (
+            st.session_state.messages and st.session_state.messages[-1]["role"] == "user"
+        )
+        
+        # --- 2b. Display Chat History (Fixed Height) ---
+        
         # If messages history is empty, add welcome message
-        # --- START: UPDATED AND FIXED WELCOME MESSAGE (Lines 420-431) ---
         if not st.session_state.messages:
             st.session_state.messages.append(
                 {"role": "assistant", 
@@ -373,58 +394,22 @@ Feel free to ask me:
 2. **Diagnostic Questions:** "Why is our NRW a financial risk?"
 3. **System Help:** "Where can I find the country-level comparison charts?"
                  
-Start by clicking one of the suggested prompts below!
+Start by clicking one of the suggested prompts above!
 """
                 }
             )
-        # --- END: UPDATED AND FIXED WELCOME MESSAGE ---
             
-        # Suggested prompts updated to reflect the new KPI names/focus (Lines 433-437)
-        suggested_prompts = [
-            "What is the biggest operational challenge (NRW)?",
-            "How does low Revenue Collection affect profit/loss?",
-            "Where can I find the Service Continuity trend?",
-        ]
-
-        # Use columns for horizontal layout of buttons
-        cols = st.columns(len(suggested_prompts))
-        for col, prompt_text in zip(cols, suggested_prompts):
-            if col.button(prompt_text, use_container_width=True):
-                st.session_state.input_prompt = prompt_text
-                st.rerun()
-                
+        # Place chat history in a fixed-height container
+        chat_history_container = st.container(height=400, border=True)
         
-        # Determine if we are waiting for an AI response
-        is_waiting_for_response = (
-            st.session_state.messages and st.session_state.messages[-1]["role"] == "user"
-        )
-        
-        # --- 2b. Display Chat History (Fixed Height) ---
-        with st.container(height=400): 
+        with chat_history_container: 
             for message in st.session_state.messages:
                 avatar = "🤖" if message["role"] == "assistant" else "👤"
                 with st.chat_message(message["role"], avatar=avatar):
                     st.markdown(message["content"])
 
-        # --- Export Dialog Feature ---
-        export_col, = st.columns([1])
-        with export_col:
-            if st.session_state.messages:
-                dialog_content = ""
-                for msg in st.session_state.messages:
-                    role = "USER" if msg["role"] == "user" else "ASSISTANT"
-                    dialog_content += f"**{role}:**\n{msg['content']}\n\n---\n\n"
-
-                st.download_button(
-                    label="📥 Export Chat Dialog (TXT)",
-                    data=dialog_content,
-                    file_name="ai_data_assistant_dialog.txt",
-                    mime="text/plain",
-                    type="secondary"
-                )
-        st.markdown("---") 
-
-        # --- Input Handling and Reruns ---
+        
+        # --- Input Handling and Reruns (STEP 1: Capture Prompt) ---
         
         prompt = None 
         submitted_prompt = None
@@ -435,10 +420,10 @@ Start by clicking one of the suggested prompts below!
             del st.session_state.input_prompt
         # Only show the chat input if we are NOT waiting for a response (This fixes the input locking)
         elif not is_waiting_for_response:
+            # --- CHAT INPUT LINE (The main input box) ---
             submitted_prompt = st.chat_input("Ask me about coverage, costs, or efficiency...")
             if submitted_prompt:
                 prompt = submitted_prompt
-
 
         # --- PHASE 1: Capture Prompt and Trigger Rerun for Display ---
         if prompt:
@@ -446,6 +431,22 @@ Start by clicking one of the suggested prompts below!
             st.session_state.messages.append({"role": "user", "content": prompt})
             # 2. Rerun the app to immediately display the user's message 
             st.rerun() 
+            
+        # --- Export Dialog Feature (STEP 2: Renders *After* the chat_input, but *Before* the Phase 2 Rerun) ---
+        if st.session_state.messages:
+            dialog_content = ""
+            for msg in st.session_state.messages:
+                role = "USER" if msg["role"] == "user" else "ASSISTANT"
+                dialog_content += f"**{role}:**\n{msg['content']}\n\n---\n\n"
+
+            # This button will now appear directly below the st.chat_input box
+            st.download_button(
+                label="📥 Export Chat Dialog (TXT)",
+                data=dialog_content,
+                file_name="ai_data_assistant_dialog.txt",
+                mime="text/plain",
+                type="secondary"
+            )
 
 
         # --- PHASE 2: GENERATING RESPONSE BLOCK ---
@@ -454,28 +455,32 @@ Start by clicking one of the suggested prompts below!
             current_prompt = st.session_state.messages[-1]["content"]
 
             # Display the AI's response in a dedicated chat message block
-            with st.chat_message("assistant", avatar="🤖"):
-                with st.spinner(f"Analyzing data for '{current_prompt[:30]}...'"):
+            with chat_history_container: # Ensure we are writing inside the fixed-height container
+                with st.chat_message("assistant", avatar="🤖"):
+                    # Use a placeholder in the chat message block for streaming
+                    response_container = st.empty()
                     
-                    full_response = ""
-                    try:
-                        chat = st.session_state.chat_session
-                        response = chat.send_message(current_prompt, stream=True)
-                        
-                        # Create an empty element to stream the output into
-                        response_container = st.empty()
-                        
-                        for chunk in response:
-                            if chunk.text:
-                                full_response += chunk.text
-                                # Update the container to show the progress
-                                response_container.markdown(full_response)
-                        
-                    except Exception as e:
-                        full_response = f"An error occurred: {e}"
-                        st.error(full_response)
+                    with st.spinner(f"Analyzing data for '{current_prompt[:30]}...'"):
+                        full_response = ""
+                        try:
+                            chat = st.session_state.chat_session
+                            response = chat.send_message(current_prompt, stream=True)
+                            
+                            for chunk in response:
+                                if chunk.text:
+                                    full_response += chunk.text
+                                    # Update the container to show the progress + cursor
+                                    response_container.markdown(full_response + "▌") 
+                            
+                            response_container.markdown(full_response) # Final message after stream ends
+                            
+                        except Exception as e:
+                            full_response = f"An error occurred: {e}"
+                            st.error(full_response)
 
             # 3. Add final, clean AI response to history
             st.session_state.messages.append({"role": "assistant", "content": full_response})
             # Force a final rerun to clear the streaming placeholder and redraw the full history
             st.rerun()
+
+    st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
