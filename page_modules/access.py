@@ -8,7 +8,14 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from utils.visualizations import create_stacked_area, create_treemap, COLORS
+from utils.visualizations import create_stacked_area, create_treemap, COLORS, apply_theme_to_chart
+from utils.ai_insights import generate_access_insights, render_ai_insights, is_ai_available
+
+
+def show_chart(fig, **kwargs):
+    """Apply theme and display chart with proper dark mode support"""
+    apply_theme_to_chart(fig)
+    st.plotly_chart(fig, **kwargs)
 
 
 def render_access_page(data, countries_filter, date_range=None):
@@ -122,7 +129,7 @@ def render_access_page(data, countries_filter, date_range=None):
         hovermode='x unified'
     )
     
-    st.plotly_chart(fig, width='stretch')
+    show_chart(fig, use_container_width=True)
     
     # Trends over time
     water_trend = w_access.groupby(['year', 'country']).agg({
@@ -151,7 +158,7 @@ def render_access_page(data, countries_filter, date_range=None):
     )
     fig.update_layout(height=400, hovermode='x unified')
     
-    st.plotly_chart(fig, width='stretch')
+    show_chart(fig, use_container_width=True)
     
     st.markdown("---")
     
@@ -196,7 +203,7 @@ def render_access_page(data, countries_filter, date_range=None):
         hovermode='x unified'
     )
     
-    st.plotly_chart(fig, width='stretch')
+    show_chart(fig, use_container_width=True)
     
     # Sanitation trends
     san_trend = s_access.groupby(['year', 'country']).agg({
@@ -225,7 +232,7 @@ def render_access_page(data, countries_filter, date_range=None):
     )
     fig.update_layout(height=400, hovermode='x unified')
     
-    st.plotly_chart(fig, width='stretch')
+    show_chart(fig, use_container_width=True)
     
     st.markdown("---")
     
@@ -259,7 +266,7 @@ def render_access_page(data, countries_filter, date_range=None):
         )
         fig.update_layout(height=400)
         
-        st.plotly_chart(fig, width='stretch')
+        show_chart(fig, use_container_width=True)
     
     with col2:
         # Coverage gap calculation
@@ -286,14 +293,14 @@ def render_access_page(data, countries_filter, date_range=None):
         fig.update_layout(height=400, showlegend=False)
         fig.update_yaxes(title='Coverage Gap (%)')
         
-        st.plotly_chart(fig, width='stretch')
+        show_chart(fig, use_container_width=True)
     
     st.markdown("---")
     
-    # Zone-level analysis
-    st.header("📍 Zone-Level Access Analysis")
+    # Zone-level analysis - Renamed for positive framing
+    st.header("📍 Priority Zone Analysis")
     
-    # Get zones with lowest coverage
+    # Get zones with lowest coverage - priority for improvement
     zone_coverage = w_access_latest.copy()
     zone_coverage['coverage'] = (
         (zone_coverage['safely_managed'] + zone_coverage['basic']) / 
@@ -307,115 +314,103 @@ def render_access_page(data, countries_filter, date_range=None):
         x='coverage',
         y='zone',
         color='country',
-        title='Zones with Lowest Water Coverage (Bottom 15)',
+        title='Priority Zones for Coverage Improvement',
         orientation='h',
         color_discrete_map=COLORS['countries']
     )
     fig.update_layout(height=500)
     
-    st.plotly_chart(fig, width='stretch')
+    show_chart(fig, use_container_width=True)
     
-    # Population treemap
-    pop_treemap_data = w_access_latest.copy()
-    pop_treemap_data['access_level'] = pd.cut(
-        pop_treemap_data['safely_managed_pct'],
+    # Population distribution by access level - Horizontal stacked bar chart
+    pop_chart_data = w_access_latest.copy()
+    pop_chart_data['access_level'] = pd.cut(
+        pop_chart_data['safely_managed_pct'],
         bins=[0, 25, 50, 75, 100],
         labels=['Poor (<25%)', 'Low (25-50%)', 'Medium (50-75%)', 'Good (>75%)']
     )
     
-    fig = px.treemap(
-        pop_treemap_data,
-        path=['country', 'access_level', 'zone'],
-        values='popn_total',
-        title='Population Distribution by Access Level',
-        color='safely_managed_pct',
-        color_continuous_scale='RdYlGn',
-        color_continuous_midpoint=50
-    )
-    fig.update_layout(height=600)
+    # Aggregate by country and access level
+    access_dist = pop_chart_data.groupby(['country', 'access_level'])['popn_total'].sum().reset_index()
     
-    st.plotly_chart(fig, width='stretch')
+    # Create stacked bar chart
+    fig = px.bar(
+        access_dist,
+        x='popn_total',
+        y='country',
+        color='access_level',
+        title='Population Distribution by Access Level',
+        orientation='h',
+        color_discrete_map={
+            'Poor (<25%)': COLORS['poor'],
+            'Low (25-50%)': COLORS['acceptable'],
+            'Medium (50-75%)': '#f1c40f',
+            'Good (>75%)': COLORS['good']
+        },
+        labels={'popn_total': 'Population', 'access_level': 'Access Level'},
+        category_orders={'access_level': ['Poor (<25%)', 'Low (25-50%)', 'Medium (50-75%)', 'Good (>75%)']}
+    )
+    fig.update_layout(
+        height=400,
+        barmode='stack',
+        legend_title='Access Level',
+        xaxis_title='Total Population',
+        yaxis_title='Country'
+    )
+    
+    show_chart(fig, use_container_width=True)
     
     st.markdown("---")
     
-    # Prescriptive Insights
-    st.header("💡 Prescriptive Insights & Recommendations")
+    # Prescriptive Insights - AI Generated
+    st.header("💡 Insights & Recommendations")
     
     # Identify underserved zones
     underserved = zone_coverage[zone_coverage['coverage'] < 50].copy()
     underserved_pop = underserved['popn_total'].sum()
     
+    # Calculate coverage data for AI context
+    coverage_data = {
+        'water_safely_managed': coverage_sm_w,
+        'water_basic': coverage_basic_w,
+        'sanitation_safely_managed': coverage_sm_s,
+        'sanitation_basic': coverage_basic_s,
+        'total_population': total_pop_w
+    }
+    
+    # Calculate zone data for AI context
+    zone_data = {
+        'low_coverage_zones': len(underserved),
+        'avg_gap': 100 - zone_coverage['coverage'].mean() if not zone_coverage.empty else 0,
+        'highest_disparity_zone': worst_zones.iloc[0]['zone'] if len(worst_zones) > 0 else 'N/A'
+    }
+    
+    # Get country context
+    country_context = countries_filter[0] if countries_filter and len(countries_filter) == 1 else None
+    
+    # Generate AI insights - only shows if AI is available
+    ai_insights = generate_access_insights(coverage_data, zone_data, country_context) if is_ai_available() else None
+    render_ai_insights(ai_insights, "🤖 AI-Powered Analysis")
+    
+    # Priority Zones Table
     col1, col2 = st.columns(2)
     
     with col1:
         st.subheader("⚠️ Priority Investment Zones")
-        
         if len(underserved) > 0:
-            st.warning(f"""
-            **{len(underserved)} zones** have coverage below 50%
-            
-            - **Total underserved population**: {underserved_pop:,.0f}
-            - **Average coverage in these zones**: {underserved['coverage'].mean():.1f}%
-            
-            **Recommended Actions:**
-            1. Prioritize infrastructure expansion in these zones
-            2. Consider Small-Scale Service Providers (SSSPs) for rapid deployment
-            3. Implement pro-poor tariff structures to ensure affordability
-            4. Allocate budget proportional to population gap
-            """)
-            
-            # Show top priority zones
+            st.caption(f"{len(underserved)} zones have coverage below 50%")
             st.dataframe(
                 worst_zones.head(10)[['zone', 'country', 'coverage', 'popn_total']],
-                width='stretch'
+                use_container_width=True
             )
         else:
             st.success("✅ No zones with critically low coverage (<50%)")
     
     with col2:
         st.subheader("📊 Open Defecation Hotspots")
-        
-        # Zones with highest open defecation
         od_zones = s_access_latest.nlargest(10, 'open_def')[['country', 'zone', 'open_def', 'open_def_pct']]
-        
         if len(od_zones) > 0:
-            st.error(f"""
-            **{len(s_access_latest[s_access_latest['open_def_pct'] > 5])} zones** have open defecation >5%
-            
-            **Highest Open Defecation Zones:**
-            """)
-            
-            st.dataframe(
-                od_zones,
-                width='stretch'
-            )
-            
-            st.markdown("""
-            **Recommended Actions:**
-            1. Launch Community-Led Total Sanitation (CLTS) programs
-            2. Provide subsidies for household latrine construction
-            3. Increase public toilet facilities in high-density areas
-            4. Conduct sanitation awareness campaigns
-            """)
-    
-    # Equity analysis
-    st.subheader("⚖️ Equity Analysis")
-    
-    # Calculate Gini coefficient or disparity metrics
-    coverage_std = zone_coverage.groupby('country')['coverage'].std()
-    
-    st.info(f"""
-    **Coverage Disparity by Country:**
-    
-    {chr(10).join([f"- **{country}**: Standard deviation of {std:.1f}% across zones" 
-                   for country, std in coverage_std.items()])}
-    
-    **Interpretation**: Higher standard deviation indicates greater inequality in access across zones.
-    Countries should aim for uniform coverage to achieve equitable service delivery.
-    
-    **Equity Targets:**
-    - Reduce within-country coverage gap to <10 percentage points
-    - Ensure all zones achieve minimum 75% coverage by 2025
-    - Prioritize marginalized and rural communities in expansion plans
-    """)
+            od_count = len(s_access_latest[s_access_latest['open_def_pct'] > 5])
+            st.caption(f"{od_count} zones have open defecation >5%")
+            st.dataframe(od_zones, use_container_width=True)
 

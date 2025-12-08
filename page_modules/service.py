@@ -15,6 +15,14 @@ from utils.kpi_calculator import (
     calculate_collection_efficiency,
 )
 from utils.visualizations import create_kpi_card, COLORS
+from utils.ai_insights import generate_service_insights, render_ai_insights, is_ai_available
+from utils.visualizations import apply_theme_to_chart
+
+
+def show_chart(fig, **kwargs):
+    """Apply theme and display chart with proper dark mode support"""
+    apply_theme_to_chart(fig)
+    st.plotly_chart(fig, **kwargs)
 
 COUNTRY_ISO_MAP = {
     'Uganda': 'UGA',
@@ -150,69 +158,47 @@ def render_service_page(data, countries_filter, date_range=None):
     if len(countries_available) == 0:
         st.info("Water quality testing data is not available for the selected filters.")
     else:
-        st.subheader("Chlorine Compliance by Country")
-        st.caption("Gauge benchmark set at ≥95% in line with WHO drinking water standards.")
-        for i in range(0, len(countries_available), 4):
-            row_countries = countries_available[i:i + 4]
-            row_cols = st.columns(len(row_countries))
-            for idx, country in enumerate(row_countries):
-                # Safe iloc with empty check
-                compliance_series = chlorine_by_country.loc[
-                    chlorine_by_country['country'] == country, 'compliance_rate'
-                ].fillna(0)
-                compliance = compliance_series.iloc[0] if len(compliance_series) > 0 else 0
-                
-                fig = create_kpi_card(
-                    f"{country} - Chlorine",
-                    compliance,
-                    95,
-                    unit='%',
-                    inverse=False
-                )
-                with row_cols[idx]:
-                    st.plotly_chart(fig, width='stretch')
-
-        st.subheader("E.coli Compliance by Country")
-        for i in range(0, len(countries_available), 4):
-            row_countries = countries_available[i:i + 4]
-            row_cols = st.columns(len(row_countries))
-            for idx, country in enumerate(row_countries):
-                # Safe iloc with empty check
-                compliance_series = ecoli_by_country.loc[
-                    ecoli_by_country['country'] == country, 'compliance_rate'
-                ].fillna(0)
-                compliance = compliance_series.iloc[0] if len(compliance_series) > 0 else 0
-                
-                fig = create_kpi_card(
-                    f"{country} - E.coli",
-                    compliance,
-                    95,
-                    unit='%',
-                    inverse=False
-                )
-                with row_cols[idx]:
-                    st.plotly_chart(fig, width='stretch')
-
-    st.subheader("🗺️ Hours of Supply Overview")
-    if production_df.empty:
-        st.info("Production time-series data is not available to map supply hours.")
-    else:
-        hours_by_country = production_df.groupby('country')['service_hours'].mean().reset_index()
-        hours_by_country['iso_alpha'] = hours_by_country['country'].map(COUNTRY_ISO_MAP)
-
-        fig = px.choropleth(
-            hours_by_country,
-            locations='iso_alpha',
-            color='service_hours',
-            hover_name='country',
-            color_continuous_scale='Viridis',
-            title='Average Hours of Supply by Country',
-            labels={'service_hours': 'Hours of Supply (avg)'}
-        )
-        fig.update_geos(showcountries=True, fitbounds="locations")
-        fig.update_layout(height=420, margin=dict(l=0, r=0, t=50, b=0))
-        st.plotly_chart(fig, width='stretch')
-        st.caption("Zone-level shapefiles were not provided; map shows country averages with detailed zone-level insights below.")
+        # Simplified water quality summary (removed gauge charts per feedback)
+        st.subheader("Water Quality Compliance Summary")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Chlorine compliance bar chart
+            fig = px.bar(
+                chlorine_by_country,
+                x='country',
+                y='compliance_rate',
+                title='Chlorine Test Pass Rate',
+                color='compliance_rate',
+                color_continuous_scale='RdYlGn',
+                labels={'compliance_rate': 'Pass Rate (%)', 'country': 'Country'}
+            )
+            fig.add_hline(y=95, line_dash="dash", line_color="red", annotation_text="95% Target")
+            fig.update_layout(height=350, showlegend=False)
+            show_chart(fig, use_container_width=True)
+        
+        with col2:
+            # E.coli compliance bar chart
+            fig = px.bar(
+                ecoli_by_country,
+                x='country',
+                y='compliance_rate',
+                title='E.coli Test Pass Rate',
+                color='compliance_rate',
+                color_continuous_scale='RdYlGn',
+                labels={'compliance_rate': 'Pass Rate (%)', 'country': 'Country'}
+            )
+            fig.add_hline(y=95, line_dash="dash", line_color="red", annotation_text="95% Target")
+            fig.update_layout(height=350, showlegend=False)
+            show_chart(fig, use_container_width=True)
+        
+        # Summary metrics
+        avg_chlorine = chlorine_by_country['compliance_rate'].mean()
+        avg_ecoli = ecoli_by_country['compliance_rate'].mean()
+        st.caption(f"Average Chlorine Compliance: {avg_chlorine:.1f}% | Average E.coli Compliance: {avg_ecoli:.1f}%")
+    
+    # Removed choropleth map per feedback - Hours of Supply is shown in Production tab
     
     # Quality trends over time
     st.subheader("Water Quality Trends Over Time")
@@ -254,12 +240,12 @@ def render_service_page(data, countries_filter, date_range=None):
             xaxis_title="Date"
         )
         
-        st.plotly_chart(fig, width='stretch')
+        show_chart(fig, use_container_width=True)
     
     st.markdown("---")
     
     # Metering Analysis
-    st.header("📊 Metering and Consumption Analysis")
+    st.header("📊 Metering Analysis & Revenue Impact")
     
     # Metering ratio by zone
     metering_by_zone = w_service.groupby(['country', 'zone']).agg({
@@ -276,19 +262,21 @@ def render_service_page(data, countries_filter, date_range=None):
         x='metering_ratio',
         y='zone',
         color='country',
-        title='Metering Ratio by Zone (Bottom 20)',
+        title='Zones Needing Meter Installation',
         orientation='h',
-        color_discrete_map=COLORS['countries']
+        color_discrete_map=COLORS['countries'],
+        labels={'metering_ratio': 'Metering Ratio (%)', 'zone': 'Zone'}
     )
     fig.add_vline(
         x=95,
         line_dash="dash",
         line_color="red",
-        annotation_text="Benchmark: 95%"
+        annotation_text="Target: 95%"
     )
     fig.update_layout(height=600)
     
-    st.plotly_chart(fig, width='stretch')
+    show_chart(fig, use_container_width=True)
+    st.caption("Zones with lowest metering ratios - priority for meter installation programs.")
     
     # Scatter: Metering ratio vs consumption
     metering_country = w_service.groupby('country').agg({
@@ -320,7 +308,7 @@ def render_service_page(data, countries_filter, date_range=None):
             y='collection_eff',
             size='complaints',
             color='country',
-            title='Metering Ratio vs Revenue Collection Efficiency',
+            title='Impact of Metering on Revenue Collection',
             color_discrete_map=COLORS['countries'],
             labels={
                 'metering_ratio': 'Metering Ratio (%)',
@@ -343,7 +331,7 @@ def render_service_page(data, countries_filter, date_range=None):
             annotation_text="Metering Target 95%"
         )
         
-        st.plotly_chart(fig, width='stretch')
+        show_chart(fig, use_container_width=True)
     
     with col2:
         # Metering trend over time
@@ -372,7 +360,7 @@ def render_service_page(data, countries_filter, date_range=None):
         )
         fig.update_layout(height=400)
         
-        st.plotly_chart(fig, width='stretch')
+        show_chart(fig, use_container_width=True)
     
     st.markdown("---")
     
@@ -391,41 +379,20 @@ def render_service_page(data, countries_filter, date_range=None):
         complaints_by_country['complaints'] - complaints_by_country['resolved']
     )
     
-    col1, col2 = st.columns(2)
+    # Summary metrics (kept, but removed by-country charts)
+    total_complaints_val = complaints_by_country['complaints'].sum()
+    total_resolved = complaints_by_country['resolved'].sum()
+    overall_resolution = (total_resolved / total_complaints_val * 100) if total_complaints_val > 0 else 0
     
+    col1, col2, col3 = st.columns(3)
     with col1:
-        fig = px.bar(
-            complaints_by_country,
-            x='country',
-            y=['resolved', 'unresolved'],
-            title='Complaints Resolved vs Unresolved by Country',
-            barmode='stack',
-            color_discrete_sequence=[COLORS['good'], COLORS['poor']]
-        )
-        fig.update_layout(height=400)
-        
-        st.plotly_chart(fig, width='stretch')
-    
+        st.metric("Total Complaints", f"{total_complaints_val:,.0f}")
     with col2:
-        fig = px.bar(
-            complaints_by_country,
-            x='country',
-            y='resolution_rate',
-            title='Complaint Resolution Rate by Country',
-            color='country',
-            color_discrete_map=COLORS['countries']
-        )
-        fig.add_hline(
-            y=90,
-            line_dash="dash",
-            line_color="red",
-            annotation_text="Target: 90%"
-        )
-        fig.update_layout(height=400, showlegend=False)
-        
-        st.plotly_chart(fig, width='stretch')
+        st.metric("Resolved", f"{total_resolved:,.0f}")
+    with col3:
+        st.metric("Resolution Rate", f"{overall_resolution:.1f}%", delta="Target: 90%")
     
-    # Complaints trend over time
+    # Complaints trend over time (kept per feedback)
     complaints_trend = finance.groupby('date').agg({
         'complaints': 'sum',
         'resolved': 'sum'
@@ -446,7 +413,7 @@ def render_service_page(data, countries_filter, date_range=None):
         hovermode='x unified',
         legend_title="Status"
     )
-    st.plotly_chart(fig, width='stretch')
+    show_chart(fig, use_container_width=True)
     
     st.markdown("---")
     
@@ -480,7 +447,7 @@ def render_service_page(data, countries_filter, date_range=None):
         fig.update_layout(height=400, showlegend=False)
         fig.update_yaxes(range=[0, 100])
         
-        st.plotly_chart(fig, width='stretch')
+        show_chart(fig, use_container_width=True)
     
     with col2:
         fig = px.bar(
@@ -494,41 +461,33 @@ def render_service_page(data, countries_filter, date_range=None):
         fig.update_layout(height=400, showlegend=False)
         fig.update_yaxes(range=[0, 100])
         
-        st.plotly_chart(fig, width='stretch')
+        show_chart(fig, use_container_width=True)
     
     st.markdown("---")
     
-    # Diagnostic Insights
-    st.header("🔍 Diagnostic Insights")
+    # Service Insights - AI Generated
+    st.header("🔍 Service Quality Insights")
     
-    hours_complaints_corr = None
-    if not production_df.empty and not finance.empty:
-        service_hours_country = production_df.groupby('country')['service_hours'].mean().reset_index(name='avg_service_hours')
-        complaints_country = finance.groupby('country')['complaints'].sum().reset_index(name='complaints')
-        merged_corr = service_hours_country.merge(complaints_country, on='country')
-        if len(merged_corr) > 1:
-            hours_complaints_corr = merged_corr['avg_service_hours'].corr(merged_corr['complaints'])
+    # Calculate wastewater treatment rate for AI context
+    ww_collected_total = s_service['ww_collected'].sum() if 'ww_collected' in s_service.columns else 0
+    ww_treated_total = s_service['ww_treated'].sum() if 'ww_treated' in s_service.columns else 0
+    treatment_rate_val = (ww_treated_total / ww_collected_total * 100) if ww_collected_total > 0 else 0
     
-    corr_display = f"{hours_complaints_corr:.2f}" if hours_complaints_corr is not None else "N/A"
+    # Prepare service data for AI context
+    service_ai_data = {
+        'chlorine_compliance': quality_rate,
+        'ecoli_compliance': ecoli_rate,
+        'metering_ratio': metering_rate,
+        'resolution_rate': resolution_rate,
+        'total_complaints': complaints,
+        'unresolved': complaints - resolved,
+        'treatment_rate': treatment_rate_val
+    }
     
-    st.info(f"""
-    **Water Quality:**
-    - Chlorine test pass rate: **{quality_rate:.1f}%** {"✅" if quality_rate >= 95 else "⚠️"}
-    - E.coli test pass rate: **{ecoli_rate:.1f}%** {"✅" if ecoli_rate >= 95 else "⚠️"}
+    # Get country context
+    country_context = countries_filter[0] if countries_filter and len(countries_filter) == 1 else None
     
-    **Metering:**
-    - Overall metering ratio: **{metering_rate:.1f}%** {"✅" if metering_rate >= 95 else "⚠️"}
-    - Zones below 50% metering contribute significantly to commercial losses
-    
-    **Customer Service:**
-    - Complaint resolution rate: **{resolution_rate:.1f}%** {"✅" if resolution_rate >= 90 else "⚠️"}
-    - Total unresolved complaints: **{complaints - resolved:,.0f}**
-    - Service hours vs complaints correlation: **{corr_display}** (negative indicates fewer complaints with longer supply)
-    
-    **Recommendations:**
-    - Install meters in zones with <50% metering ratio to reduce commercial losses
-    - Investigate and address water quality issues in zones failing tests
-    - Improve complaint resolution processes to reach 90%+ resolution rate
-    - Increase wastewater treatment capacity where treatment rate < 80%
-    """)
+    # Generate AI insights - only shows if AI is available
+    ai_insights = generate_service_insights(service_ai_data, country_context) if is_ai_available() else None
+    render_ai_insights(ai_insights, "🤖 AI-Powered Service Analysis")
 

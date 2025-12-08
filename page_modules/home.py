@@ -7,7 +7,7 @@ Redesigned with modern UI and custom branding
 import streamlit as st
 import plotly.graph_objects as go
 from utils.data_loader import load_all_data, get_latest_update_date
-from utils.kpi_calculator import calculate_summary_kpis
+from utils.kpi_calculator import calculate_summary_kpis, calculate_country_kpis
 from utils.visualizations import COLORS
 from utils.theme import get_theme, BRAND, LIGHT_THEME
 from assets.logo_svg import get_wash_logo_colored_svg
@@ -80,134 +80,109 @@ def render_home_page(data, countries_filter, date_range=None):
     </div>
     """, unsafe_allow_html=True)
     
-    # Country configuration with new theme colors
+    # Country configuration with equal treatment for all countries
     countries_config = [
         {
             'name': 'Uganda',
             'emoji': '🇺🇬',
             'description': 'National Water and Sewerage Corporation (NWSC)',
             'zones': 'Central, Kawempe, Nakawa, Rubaga',
-            'color': theme['countries']['Uganda'],
-            'is_hero': True  # First country gets hero treatment
+            'color': theme['countries']['Uganda']
         },
         {
             'name': 'Malawi',
             'emoji': '🇲🇼',
             'description': 'Lilongwe Water Board (LWB)',
             'zones': 'Capital Hill, Kanengo, Lumbadzi, Old Town',
-            'color': theme['countries']['Malawi'],
-            'is_hero': False
+            'color': theme['countries']['Malawi']
         },
         {
             'name': 'Lesotho',
             'emoji': '🇱🇸',
             'description': 'Water and Sewerage Company (WASCO)',
             'zones': 'Maseru Urban, Maseru Rural, Rural Hinterland',
-            'color': theme['countries']['Lesotho'],
-            'is_hero': False
+            'color': theme['countries']['Lesotho']
         },
         {
             'name': 'Cameroon',
             'emoji': '🇨🇲',
             'description': 'Camerounaise Des Eaux (CDE)',
             'zones': 'Yaounde 1-7',
-            'color': theme['countries']['Cameroon'],
-            'is_hero': False
+            'color': theme['countries']['Cameroon']
         }
     ]
     
-    # Bento Grid Layout: 1 large hero + 3 smaller cards
-    col_hero, col_right = st.columns([1.2, 1])
-    
-    # Hero card (Uganda)
-    with col_hero:
-        render_country_card_new(
+    # Equal 2x2 Grid Layout for all countries
+    # First row
+    col1, col2 = st.columns(2)
+    with col1:
+        render_country_card_equal(
             countries_config[0]['name'],
             countries_config[0]['emoji'],
             countries_config[0]['description'],
             countries_config[0]['zones'],
             countries_config[0]['color'],
-            is_hero=True,
+            theme=theme
+        )
+    with col2:
+        render_country_card_equal(
+            countries_config[1]['name'],
+            countries_config[1]['emoji'],
+            countries_config[1]['description'],
+            countries_config[1]['zones'],
+            countries_config[1]['color'],
             theme=theme
         )
     
-    # Smaller cards stack
-    with col_right:
-        for country_info in countries_config[1:]:
-            render_country_card_new(
-                country_info['name'],
-                country_info['emoji'],
-                country_info['description'],
-                country_info['zones'],
-                country_info['color'],
-                is_hero=False,
-                theme=theme
-            )
+    # Second row
+    col3, col4 = st.columns(2)
+    with col3:
+        render_country_card_equal(
+            countries_config[2]['name'],
+            countries_config[2]['emoji'],
+            countries_config[2]['description'],
+            countries_config[2]['zones'],
+            countries_config[2]['color'],
+            theme=theme
+        )
+    with col4:
+        render_country_card_equal(
+            countries_config[3]['name'],
+            countries_config[3]['emoji'],
+            countries_config[3]['description'],
+            countries_config[3]['zones'],
+            countries_config[3]['color'],
+            theme=theme
+        )
     
     st.markdown("<div style='height: 32px;'></div>", unsafe_allow_html=True)
     
-    # Overall Statistics Summary
+    # Country Performance Summary - Individual country KPI cards
     st.markdown("---")
-    st.header("📊 Multi-Country Overview")
-    st.markdown("Key performance indicators across all four countries")
+    st.header("📊 Country Performance Summary")
+    st.markdown("Key performance indicators for each country")
     
-    kpis = calculate_summary_kpis(data)
-
-    if not kpis:
-        st.warning("No data available. Please check data files.")
-        return
-
-    kpi_layout = [
-        ('water_coverage', "💧 Water Coverage"),
-        ('sanitation_coverage', "🚽 Sanitation Coverage"),
-        ('nrw', "💸 Non-Revenue Water"),
-        ('water_quality', "🔬 Water Quality"),
-        ('service_hours', "⏰ Hours of Supply"),
-        ('collection_efficiency', "💵 Revenue Collection Efficiency"),
-        ('occr', "📈 O&M Cost Coverage (OCCR)"),
-        ('personnel_cost_ratio', "👥 Personnel Cost Share"),
-        ('metering_ratio', "📊 Metering Ratio"),
-        ('staff_productivity', "🧑‍🔧 Staff Productivity"),
-    ]
-
-    # --- START OF CORRECTED BLOCK ---
+    # Calculate KPIs for each country
+    country_names = ['Uganda', 'Malawi', 'Lesotho', 'Cameroon']
+    country_emojis = {'Uganda': '🇺🇬', 'Malawi': '🇲🇼', 'Lesotho': '🇱🇸', 'Cameroon': '🇨🇲'}
     
-    # Initialize row_cols to an empty list.
-    row_cols = [] 
-
-    for idx, (key, title) in enumerate(kpi_layout):
-        if key not in kpis:
-            continue
-
-        col_index = idx % 5 
-
-        # If it's the start of a new row (index 0, 5, 10, etc.), create 5 columns.
-        if col_index == 0:
-            # This is the ONLY place where row_cols is assigned st.columns(5)
-            # This ensures that row_cols is a list of 5 elements before it's used.
-            row_cols = st.columns(5)
-            
-        # The list row_cols is now guaranteed to hold 5 columns if we continue.
-        # Check to prevent an IndexError if kpis somehow had fewer than 5 items
-        # AND was missing keys that should have been skipped (a very unlikely edge case).
-        if col_index >= len(row_cols):
-             continue
-
-        metric = kpis[key]
-        inverse = metric.get('inverse', False)
-        status, color = get_status(metric['value'], metric['benchmark'], inverse=inverse)
-        value_label = format_metric_value(metric)
-        target_label = format_metric_target(key, metric)
-
-        # Access the column safely using the index (0 to 4)
-        with row_cols[col_index]: 
-            render_kpi_card(
-                title,
-                value_label,
-                target_label,
-                color
+    # Display country KPI summary cards in 2x2 grid
+    row1_col1, row1_col2 = st.columns(2)
+    row2_col1, row2_col2 = st.columns(2)
+    
+    country_cols = [row1_col1, row1_col2, row2_col1, row2_col2]
+    
+    for idx, country_name in enumerate(country_names):
+        country_kpis = calculate_country_kpis(data, country_name)
+        
+        with country_cols[idx]:
+            render_country_kpi_summary(
+                country_name,
+                country_emojis[country_name],
+                country_kpis,
+                theme['countries'][country_name],
+                theme
             )
-    # --- END OF CORRECTED BLOCK ---
     
     st.markdown("---")
     
@@ -260,22 +235,25 @@ def render_country_card(country_name, emoji, description, zones, color):
 
 
 def render_country_card_new(country_name, emoji, description, zones, color, is_hero=False, theme=None):
-    """Render a modern country selection card with clean styling"""
+    """Render a modern country selection card with clean styling (DEPRECATED - use render_country_card_equal)"""
     if theme is None:
         theme = get_theme()
+    
+    # Use theme-aware background colors
+    bg_color = theme['bg_card']
     
     # Card styling based on hero status
     if is_hero:
         # Hero card container with accent border
         st.markdown(f"""
         <div style="
-            background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFF 100%);
+            background: {bg_color};
             border-radius: 16px;
             padding: 24px;
             margin-bottom: 16px;
-            border: 1px solid rgba(17, 63, 103, 0.08);
+            border: 1px solid {theme['border']};
             border-left: 5px solid {color};
-            box-shadow: 0 4px 16px rgba(17, 63, 103, 0.08);
+            box-shadow: {theme['shadow']};
         ">
             <div style="display: flex; align-items: flex-start; gap: 20px;">
                 <div style="font-size: 56px; line-height: 1;">{emoji}</div>
@@ -295,13 +273,13 @@ def render_country_card_new(country_name, emoji, description, zones, color, is_h
         # Regular card (compact)
         st.markdown(f"""
         <div style="
-            background: #FFFFFF;
+            background: {bg_color};
             border-radius: 12px;
             padding: 16px 20px;
             margin-bottom: 12px;
-            border: 1px solid rgba(17, 63, 103, 0.06);
+            border: 1px solid {theme['border']};
             border-left: 4px solid {color};
-            box-shadow: 0 2px 8px rgba(17, 63, 103, 0.04);
+            box-shadow: {theme['shadow']};
             transition: all 0.2s ease;
         ">
             <div style="display: flex; align-items: center; gap: 16px;">
@@ -317,6 +295,104 @@ def render_country_card_new(country_name, emoji, description, zones, color, is_h
         if st.button(f"→ View {country_name}", key=f"country_{country_name}_new", use_container_width=True):
             st.session_state.selected_country = country_name
             st.rerun()
+
+
+def render_country_card_equal(country_name, emoji, description, zones, color, theme=None):
+    """Render an equal-sized country selection card for 2x2 grid layout"""
+    if theme is None:
+        theme = get_theme()
+    
+    # Use theme-aware background colors
+    bg_color = theme['bg_card']
+    
+    st.markdown(f"""
+    <div style="
+        background: {bg_color};
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 16px;
+        border: 1px solid {theme['border']};
+        border-left: 5px solid {color};
+        box-shadow: {theme['shadow']};
+        min-height: 140px;
+    ">
+        <div style="display: flex; align-items: flex-start; gap: 16px;">
+            <div style="font-size: 42px; line-height: 1;">{emoji}</div>
+            <div style="flex: 1;">
+                <h3 style="color: {theme['text_primary']}; margin: 0 0 6px 0; font-size: 1.25rem; font-weight: 700;">{country_name}</h3>
+                <p style="color: {theme['text_secondary']}; margin: 0 0 6px 0; font-size: 13px;">{description}</p>
+                <p style="color: {theme['text_muted']}; margin: 0; font-size: 11px;">📍 <strong>Zones:</strong> {zones}</p>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button(f"🔍 View {country_name} Dashboard", key=f"country_{country_name}_equal", use_container_width=True):
+        st.session_state.selected_country = country_name
+        st.rerun()
+
+
+def render_country_kpi_summary(country_name, emoji, kpis, color, theme):
+    """Render a country KPI summary card with key metrics"""
+    # Extract key KPIs
+    nrw = kpis.get('nrw', 0)
+    cost_recovery = kpis.get('cost_recovery_ratio', 0)
+    water_coverage = kpis.get('water_service_coverage', 0)
+    service_hours = kpis.get('service_continuity', 0)
+    
+    # Determine NRW status color
+    nrw_color = COLORS['good'] if nrw <= 25 else (COLORS['acceptable'] if nrw <= 37.5 else COLORS['poor'])
+    # Cost recovery status
+    cr_color = COLORS['good'] if cost_recovery >= 100 else (COLORS['acceptable'] if cost_recovery >= 80 else COLORS['poor'])
+    # Water coverage status
+    wc_color = COLORS['good'] if water_coverage >= 90 else (COLORS['acceptable'] if water_coverage >= 70 else COLORS['poor'])
+    # Service hours status
+    sh_color = COLORS['good'] if service_hours >= 20 else (COLORS['acceptable'] if service_hours >= 16 else COLORS['poor'])
+    
+    # Check for data quality issues (Cameroon NRW)
+    nrw_warning = ""
+    if country_name == "Cameroon" and nrw == 0:
+        nrw_warning = "⚠️ Data Issue"
+        nrw_color = COLORS['acceptable']
+    
+    st.markdown(f"""
+    <div style="
+        background: {theme['bg_card']};
+        border-radius: 14px;
+        padding: 18px;
+        margin-bottom: 12px;
+        border: 1px solid {theme['border']};
+        border-top: 4px solid {color};
+        box-shadow: {theme['shadow']};
+    ">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
+            <span style="font-size: 28px;">{emoji}</span>
+            <h4 style="color: {theme['text_primary']}; margin: 0; font-size: 1.1rem; font-weight: 700;">{country_name}</h4>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px;">
+                <p style="margin: 0; font-size: 11px; color: {theme['text_muted']};">NRW</p>
+                <p style="margin: 2px 0 0 0; font-size: 18px; font-weight: 700; color: {nrw_color};">
+                    {nrw_warning if nrw_warning else f"{nrw:.1f}%"}
+                </p>
+            </div>
+            <div style="background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px;">
+                <p style="margin: 0; font-size: 11px; color: {theme['text_muted']};">Cost Recovery</p>
+                <p style="margin: 2px 0 0 0; font-size: 18px; font-weight: 700; color: {cr_color};">{cost_recovery:.1f}%</p>
+            </div>
+            <div style="background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px;">
+                <p style="margin: 0; font-size: 11px; color: {theme['text_muted']};">Water Coverage</p>
+                <p style="margin: 2px 0 0 0; font-size: 18px; font-weight: 700; color: {wc_color};">{water_coverage:.1f}%</p>
+            </div>
+            <div style="background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px;">
+                <p style="margin: 0; font-size: 11px; color: {theme['text_muted']};">Service Hours</p>
+                <p style="margin: 2px 0 0 0; font-size: 18px; font-weight: 700; color: {sh_color};">{service_hours:.1f} hrs</p>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
 def render_kpi_card(title, value, target, color):
     """Render a KPI metric card"""
     theme = get_theme()

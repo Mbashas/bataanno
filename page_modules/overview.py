@@ -319,32 +319,16 @@ def render_overview_page(data, countries_filter, date_range=None):
 
     st.markdown("---")
     
-    # --- Key Insights Section (DYNAMICALLY GENERATED) ---
-    st.header("💡 Key Insights")
-    
-    # --- DYNAMIC AI INSIGHTS GENERATION ---
-    with st.spinner("Running AI Diagnostic Analysis..."):
-        ai_insights_markdown = get_ai_insights(summary_kpis, country_kpis)
-
-    if ai_insights_markdown:
-        st.info(ai_insights_markdown)
-    else:
-        # Fallback to a simple static summary if AI generation fails or is disabled
-        kpis = summary_kpis
-        st.info(
-            """
-        **Descriptive Insights (Static Fallback):**
-        - Average NRW: **{nrw:.1f}%** (Benchmark: ≤25%)
-        - Cost Recovery Ratio: **{cost_recovery:.1f}%** (Target: ≥100%)
+    # --- Key Insights Section (AI GENERATED ONLY) ---
+    if api_key_configured:
+        st.header("💡 Key Insights")
         
-        **Diagnostic Insights (Static Fallback):**
-        - Focus is needed on improving both operational efficiency (NRW) and financial sustainability (Cost Recovery).
-        """.format(
-                nrw=kpis.get('nrw', {}).get('value', 0),
-                cost_recovery=kpis.get('cost_recovery_ratio', {}).get('value', 0),
-            )
-        )
-    # --- END DYNAMIC AI INSIGHTS GENERATION ---
+        with st.spinner("Running AI Diagnostic Analysis..."):
+            ai_insights_markdown = get_ai_insights(summary_kpis, country_kpis)
+
+        if ai_insights_markdown:
+            st.markdown(ai_insights_markdown)
+        # If no AI insights available, show nothing (no fallback)
     
     # --- 2. AI Chat Assistant Implementation (FIXED VISUAL FLOW) ---
     
@@ -352,7 +336,7 @@ def render_overview_page(data, countries_filter, date_range=None):
     st.subheader("💬 AI Data Assistant")
 
     if not api_key_configured:
-        st.warning("The AI Assistant is currently disabled. Please ensure the 'google-generativeai' library is installed and 'GEMINI_API_KEY' is set in your .streamlit/secrets.toml.")
+        st.info("AI Assistant requires a valid API key. Configure GEMINI_API_KEY in .streamlit/secrets.toml to enable.")
         return # Stop chat functionality if client failed to initialize
 
     # Check context change

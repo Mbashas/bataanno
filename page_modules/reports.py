@@ -5,6 +5,7 @@ Generate insights, action plans, and export data
 
 import streamlit as st
 import pandas as pd
+import numpy as np
 from utils.kpi_calculator import calculate_country_kpis
 from fpdf import FPDF
 
@@ -417,127 +418,58 @@ def render_reports_page(data, countries_filter, date_range=None):
         st.subheader("⚠️ Priority Action Items")
         
         if not performance_df.empty:
-            # High NRW
+            # Show alerts for metrics below benchmark (factual data only)
             high_nrw = performance_df[performance_df['NRW'] > 25]
             if len(high_nrw) > 0:
-                st.warning(f"""
-                **💧 High Non-Revenue Water:**
-                
-                {chr(10).join([f"- **{row['Country']}**: {row['NRW']:.1f}% NRW" 
-                               for _, row in high_nrw.iterrows()])}
-                
-                **Action:** Implement leak detection and metering programs
-                """)
+                st.caption(f"⚠️ {len(high_nrw)} countries with NRW > 25%")
             
-            # Low OCCR
             low_occr = performance_df[performance_df['OCCR'] < 110]
             if len(low_occr) > 0:
-                st.warning(f"""
-                **📉 Low Cost Recovery:**
-                
-                {chr(10).join([f"- **{row['Country']}**: {row['OCCR']:.1f}% OCCR" 
-                               for _, row in low_occr.iterrows()])}
-                
-                **Action:** Review tariff structures and reduce operational costs
-                """)
+                st.caption(f"⚠️ {len(low_occr)} countries with OCCR < 110%")
             
-            # Low coverage
             low_coverage = performance_df[performance_df['Water Coverage'] < 80]
             if len(low_coverage) > 0:
-                st.warning(f"""
-                **🚰 Low Water Coverage:**
-                
-                {chr(10).join([f"- **{row['Country']}**: {row['Water Coverage']:.1f}% coverage" 
-                               for _, row in low_coverage.iterrows()])}
-                
-                **Action:** Prioritize infrastructure expansion in underserved zones
-                """)
+                st.caption(f"⚠️ {len(low_coverage)} countries with Water Coverage < 80%")
     
     st.markdown("---")
     
-    # Detailed Action Plans by Domain
-    st.header("📋 Domain-Specific Action Plans")
+    # Domain Status Summary (factual data only)
+    st.header("📋 Domain Status Summary")
     
-    # Production Domain Actions
-    with st.expander("🏭 Production Domain - Recommended Actions"):
+    # Production Domain Status
+    with st.expander("🏭 Production Domain"):
         production_df = data['production']
         if countries_filter:
             production_df = production_df[production_df['country'].isin(countries_filter)]
         
         avg_service_hours = production_df['service_hours'].mean()
-        low_service_sources = production_df[production_df['service_hours'] < 20].groupby('country')['source'].count()
+        sources_below_benchmark = len(production_df[production_df['service_hours'] < 20])
         
-        st.markdown(f"""
-        ### Current Status
-        - **Average service hours:** {avg_service_hours:.1f} hrs/day (Benchmark: ≥20 hrs/day)
-        - **Sources below benchmark:** {len(production_df[production_df['service_hours'] < 20])}
-        
-        ### Priority Actions
-        
-        1. **Improve Service Continuity**
-           - 🔧 Conduct infrastructure audits for sources with <20 hrs service
-           - ⚡ Address power supply issues and backup systems
-           - 💧 Optimize pumping schedules to maximize service hours
-           - **Timeline:** 3-6 months
-           - **Expected Impact:** Increase service hours by 15-20%
-        
-        2. **Optimize Production Capacity**
-           - 📊 Analyze production vs demand patterns
-           - 🔄 Balance load across multiple sources
-           - 🛠️ Schedule preventive maintenance during low-demand periods
-           - **Timeline:** Ongoing
-           - **Expected Impact:** Reduce emergency breakdowns by 30%
-        
-        3. **Enhance Monitoring Systems**
-           - 📱 Install SCADA systems for real-time monitoring
-           - 📊 Implement dashboard for production tracking
-           - 🚨 Set up alerts for low production or service interruptions
-           - **Timeline:** 6-12 months
-           - **Expected Impact:** Faster response to issues, 24/7 monitoring
-        """)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Average Service Hours", f"{avg_service_hours:.1f} hrs/day", delta="Benchmark: ≥20 hrs")
+        with col2:
+            st.metric("Sources Below Benchmark", sources_below_benchmark)
     
-    # Service Domain Actions
-    with st.expander("🚰 Service Domain - Recommended Actions"):
+    # Service Domain Status
+    with st.expander("🚰 Service Domain"):
         w_service = data['w_service']
         if countries_filter:
             w_service = w_service[w_service['country'].isin(countries_filter)]
         
         chlorine_rate = (w_service['test_passed_chlorine'].sum() / 
-                        w_service['tests_conducted_chlorine'].sum() * 100)
+                        w_service['tests_conducted_chlorine'].sum() * 100) if w_service['tests_conducted_chlorine'].sum() > 0 else 0
         metering_rate = (w_service['metered'].sum() / 
-                        w_service['total_consumption'].sum() * 100)
+                        w_service['total_consumption'].sum() * 100) if w_service['total_consumption'].sum() > 0 else 0
         
-        st.markdown(f"""
-        ### Current Status
-        - **Water quality compliance:** {chlorine_rate:.1f}% (Benchmark: ≥95%)
-        - **Metering ratio:** {metering_rate:.1f}% (Benchmark: ≥95%)
-        
-        ### Priority Actions
-        
-        1. **Improve Water Quality**
-           - 🧪 Increase testing frequency in failing zones
-           - 💊 Ensure adequate chlorine supply and dosing
-           - 🔬 Train staff on water quality monitoring
-           - **Timeline:** Immediate (0-3 months)
-           - **Expected Impact:** Achieve 95%+ compliance
-        
-        2. **Expand Metering Coverage**
-           - 📊 Prioritize zones with <50% metering ratio
-           - 💳 Install smart meters with remote reading capability
-           - 🔧 Replace non-functional meters
-           - **Timeline:** 12-24 months
-           - **Expected Impact:** Reduce commercial losses by 10-15%
-        
-        3. **Enhance Customer Service**
-           - 📞 Establish 24/7 customer service hotline
-           - 💻 Implement online complaint tracking system
-           - 📱 Send SMS alerts for service interruptions
-           - **Timeline:** 3-6 months
-           - **Expected Impact:** Improve customer satisfaction by 25%
-        """)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Water Quality Compliance", f"{chlorine_rate:.1f}%", delta="Benchmark: ≥95%")
+        with col2:
+            st.metric("Metering Ratio", f"{metering_rate:.1f}%", delta="Benchmark: ≥95%")
     
-    # Access Domain Actions
-    with st.expander("🌍 Access Domain - Recommended Actions"):
+    # Access Domain Status
+    with st.expander("🌍 Access Domain"):
         w_access = data['w_access']
         if countries_filter:
             w_access = w_access[w_access['country'].isin(countries_filter)]
@@ -547,86 +479,33 @@ def render_reports_page(data, countries_filter, date_range=None):
         
         avg_coverage = ((w_access_latest['safely_managed'].sum() + 
                         w_access_latest['basic'].sum()) / 
-                       w_access_latest['popn_total'].sum() * 100)
+                       w_access_latest['popn_total'].sum() * 100) if w_access_latest['popn_total'].sum() > 0 else 0
         underserved_zones = len(w_access_latest[
             ((w_access_latest['safely_managed'] + w_access_latest['basic']) / 
-             w_access_latest['popn_total'] * 100) < 50
+             w_access_latest['popn_total'].replace({0: np.nan}) * 100) < 50
         ])
         
-        st.markdown(f"""
-        ### Current Status
-        - **Average water coverage:** {avg_coverage:.1f}% (Target: 100%)
-        - **Zones with <50% coverage:** {underserved_zones}
-        
-        ### Priority Actions
-        
-        1. **Target Underserved Areas**
-           - 🗺️ Map underserved zones and population density
-           - 💰 Allocate budget proportional to coverage gap
-           - 🏗️ Fast-track infrastructure projects in priority zones
-           - **Timeline:** 18-36 months
-           - **Expected Impact:** Increase coverage by 10-15 percentage points
-        
-        2. **Promote Alternative Service Providers**
-           - 🤝 License and regulate Small-Scale Service Providers (SSSPs)
-           - 💧 Provide technical support and quality monitoring
-           - 📊 Track performance and coverage expansion
-           - **Timeline:** 12-18 months
-           - **Expected Impact:** Reach remote/rural areas faster
-        
-        3. **Implement Pro-Poor Strategies**
-           - 💵 Introduce subsidized tariffs for low-income households
-           - 🚰 Install public water points in informal settlements
-           - 📚 Conduct awareness campaigns on water conservation
-           - **Timeline:** 6-12 months
-           - **Expected Impact:** Improve equity and affordability
-        """)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Average Water Coverage", f"{avg_coverage:.1f}%", delta="Target: 100%")
+        with col2:
+            st.metric("Zones with <50% Coverage", underserved_zones)
     
-    # Finance Domain Actions
-    with st.expander("💰 Finance Domain - Recommended Actions"):
+    # Finance Domain Status
+    with st.expander("💰 Finance Domain"):
         finance = data['finance']
         if countries_filter:
             finance = finance[finance['country'].isin(countries_filter)]
         
-        avg_occr = ((finance['sewer_revenue'].sum() / finance['opex'].sum()) * 100)
+        avg_occr = ((finance['sewer_revenue'].sum() / finance['opex'].sum()) * 100) if finance['opex'].sum() > 0 else 0
         collection_eff = ((finance['sewer_revenue'].sum() / 
-                          finance['sewer_billed'].sum()) * 100)
+                          finance['sewer_billed'].sum()) * 100) if finance['sewer_billed'].sum() > 0 else 0
         
-        st.markdown(f"""
-        ### Current Status
-        - **Average OCCR:** {avg_occr:.1f}% (Benchmark: ≥110%)
-        - **Collection efficiency:** {collection_eff:.1f}% (Benchmark: ≥95%)
-        
-        ### Priority Actions
-        
-        1. **Improve Revenue Collection**
-           - 💳 Implement mobile payment platforms (M-Pesa, etc.)
-           - 📊 Automate billing and reduce manual errors
-           - 🚫 Enforce disconnection for chronic defaulters
-           - **Timeline:** 3-6 months
-           - **Expected Impact:** Increase collection efficiency to 95%+
-        
-        2. **Optimize Operating Costs**
-           - ⚡ Conduct energy audits and optimize pumping schedules
-           - 👥 Right-size staffing based on productivity benchmarks
-           - 🔧 Implement preventive maintenance programs
-           - **Timeline:** 6-12 months
-           - **Expected Impact:** Reduce OpEx by 10-15%
-        
-        3. **Review Tariff Structures**
-           - 💰 Ensure tariffs cover full O&M costs
-           - 📊 Implement increasing block tariffs for equity
-           - 🏢 Cross-subsidize with commercial/industrial tariffs
-           - **Timeline:** 12-18 months (requires regulatory approval)
-           - **Expected Impact:** Achieve OCCR >110%
-        
-        4. **Financial Management Capacity**
-           - 📚 Train staff on financial planning and budgeting
-           - 💻 Implement financial management software
-           - 📊 Establish monthly financial reporting routines
-           - **Timeline:** 3-6 months
-           - **Expected Impact:** Better financial decision-making
-        """)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Average OCCR", f"{avg_occr:.1f}%", delta="Benchmark: ≥110%")
+        with col2:
+            st.metric("Collection Efficiency", f"{collection_eff:.1f}%", delta="Benchmark: ≥95%")
     
     st.markdown("---")
     
@@ -721,35 +600,4 @@ def render_reports_page(data, countries_filter, date_range=None):
             mime="application/pdf"
         )
     
-    st.markdown("---")
-    
-    # Summary Insights
-    st.header("💡 Key Takeaways")
-    
-    st.success("""
-    ### Overall Performance Summary
-    
-    ✅ **Strengths:**
-    - Strong regulatory frameworks in place
-    - Improving water quality compliance
-    - Increasing metering coverage
-    
-    ⚠️ **Areas for Improvement:**
-    - Non-Revenue Water remains high (>25% in some countries)
-    - Cost recovery below benchmark in several utilities
-    - Coverage gaps persist in rural and underserved areas
-    
-    🎯 **Strategic Priorities (Next 12 Months):**
-    1. Launch aggressive NRW reduction programs
-    2. Improve revenue collection efficiency to 95%+
-    3. Expand coverage in underserved zones
-    4. Strengthen financial management capacity
-    5. Enhance customer service and complaint resolution
-    
-    📊 **Expected Impact:**
-    - 10-15% reduction in NRW
-    - 5-10% improvement in OCCR
-    - 100,000+ additional people with access to safe water
-    - Enhanced financial sustainability across all countries
-    """)
 

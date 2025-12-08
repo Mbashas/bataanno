@@ -11,6 +11,8 @@ import pandas as pd
 import numpy as np
 
 # Import theme system
+import streamlit as st
+
 try:
     from utils.theme import get_theme, LIGHT_THEME
 except ImportError:
@@ -18,6 +20,11 @@ except ImportError:
     LIGHT_THEME = None
     def get_theme():
         return None
+
+
+def is_dark_mode():
+    """Check if dark mode is currently active"""
+    return st.session_state.get('theme', 'light') == 'dark'
 
 
 def get_current_colors():
@@ -45,49 +52,80 @@ def get_current_colors():
     return COLORS
 
 
-def apply_high_contrast_text(fig):
+def apply_theme_to_chart(fig):
     """
-    Apply high-contrast text settings to charts for better visibility
-    Works in both light and dark modes
+    Apply theme-aware styling to Plotly charts.
+    Handles both light and dark modes properly.
     """
     colors = get_current_colors()
+    dark = is_dark_mode()
     
-    # Update all text elements with high contrast
+    # Set background colors based on theme
+    if dark:
+        paper_bg = '#1a2942'  # Dark card background
+        plot_bg = '#1a2942'
+        text_color = '#F8FAFC'  # Bright white text
+        grid_color = '#334155'
+        legend_bg = 'rgba(26, 41, 66, 0.95)'
+    else:
+        paper_bg = '#ffffff'
+        plot_bg = '#ffffff'
+        text_color = '#1A202C'  # Dark text
+        grid_color = '#E2E8F0'
+        legend_bg = 'rgba(255, 255, 255, 0.95)'
+    
+    # Update layout with theme colors
     fig.update_layout(
+        paper_bgcolor=paper_bg,
+        plot_bgcolor=plot_bg,
         font=dict(
             family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
             size=13,
-            color=colors['text_dark']
+            color=text_color
         ),
         title_font=dict(
             size=16,
-            color=colors['text_dark'],
+            color=text_color,
             family="Inter, sans-serif"
         ),
         hoverlabel=dict(
-            bgcolor=colors['bg_card'],
+            bgcolor=paper_bg,
             font_size=12,
             font_family="Inter, sans-serif",
-            font_color=colors['text_dark']
+            font_color=text_color
+        ),
+        legend=dict(
+            font=dict(color=text_color, size=12),
+            bgcolor=legend_bg,
+            bordercolor=colors['border'],
+            borderwidth=1
         )
     )
     
-    # Update axes with high contrast
+    # Update axes with theme colors
     fig.update_xaxes(
-        title_font=dict(color=colors['text_dark'], size=13),
-        tickfont=dict(color=colors['text_dark'], size=11),
-        gridcolor=colors['grid'],
+        title_font=dict(color=text_color, size=13),
+        tickfont=dict(color=text_color, size=11),
+        gridcolor=grid_color,
         linecolor=colors['border']
     )
     
     fig.update_yaxes(
-        title_font=dict(color=colors['text_dark'], size=13),
-        tickfont=dict(color=colors['text_dark'], size=11),
-        gridcolor=colors['grid'],
+        title_font=dict(color=text_color, size=13),
+        tickfont=dict(color=text_color, size=11),
+        gridcolor=grid_color,
         linecolor=colors['border']
     )
     
     return fig
+
+
+def apply_high_contrast_text(fig):
+    """
+    Apply high-contrast text settings to charts for better visibility
+    Works in both light and dark modes - alias for apply_theme_to_chart
+    """
+    return apply_theme_to_chart(fig)
 
 
 # HIGH-CONTRAST COLOR PALETTE - Blue Water Theme
@@ -115,22 +153,38 @@ COLORS = {
 }
 
 # STANDARD LAYOUT - Applied to ALL charts for consistency
-# Ensures dark text on light background for maximum readability
+# Now theme-aware for dark/light mode support
 def get_standard_layout():
-    """Get standard layout with current theme colors"""
+    """Get standard layout with current theme colors - supports dark mode"""
     colors = get_current_colors()
+    dark = is_dark_mode()
+    
+    # Set colors based on theme
+    if dark:
+        paper_bg = '#1a2942'
+        plot_bg = '#1a2942'
+        text_color = '#F8FAFC'
+        grid_color = '#334155'
+        legend_bg = 'rgba(26, 41, 66, 0.95)'
+    else:
+        paper_bg = '#ffffff'
+        plot_bg = '#ffffff'
+        text_color = '#1A202C'
+        grid_color = '#E2E8F0'
+        legend_bg = 'rgba(255, 255, 255, 0.95)'
+    
     return {
-        'paper_bgcolor': colors['bg_chart'],
-        'plot_bgcolor': colors['bg_chart'],
+        'paper_bgcolor': paper_bg,
+        'plot_bgcolor': plot_bg,
         'font': {
             'family': 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
             'size': 13,
-            'color': colors['text_dark']
+            'color': text_color
         },
         'title': {
             'font': {
                 'size': 18,
-                'color': colors['text_dark'],
+                'color': text_color,
                 'family': 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
             },
             'x': 0.5,
@@ -139,39 +193,39 @@ def get_standard_layout():
         'xaxis': {
             'title': {
                 'font': {
-                    'color': colors['text_dark'],
+                    'color': text_color,
                     'size': 13,
                 }
             },
             'tickfont': {
-                'color': colors['text_dark'],
+                'color': text_color,
                 'size': 12
             },
-            'gridcolor': colors['grid'],
+            'gridcolor': grid_color,
             'showgrid': True,
             'linecolor': colors['border']
         },
         'yaxis': {
             'title': {
                 'font': {
-                    'color': colors['text_dark'],
+                    'color': text_color,
                     'size': 13,
                 }
             },
             'tickfont': {
-                'color': colors['text_dark'],
+                'color': text_color,
                 'size': 12
             },
-            'gridcolor': colors['grid'],
+            'gridcolor': grid_color,
             'showgrid': True,
             'linecolor': colors['border']
         },
         'legend': {
             'font': {
-                'color': colors['text_dark'],
+                'color': text_color,
                 'size': 12
             },
-            'bgcolor': 'rgba(255, 255, 255, 0.9)',
+            'bgcolor': legend_bg,
             'bordercolor': colors['border'],
             'borderwidth': 1
         },
@@ -373,39 +427,43 @@ def create_kpi_card(title, value, benchmark, unit='%', inverse=False):
         }
     ))
     
-    # 4. Update Layout (FIXED: Removed 'config')
+    # 4. Update Layout - Theme-aware
+    dark = is_dark_mode()
+    bg_color = '#1a2942' if dark else '#ffffff'
+    text_color = '#F8FAFC' if dark else current_colors['text_dark']
+    annotation_color = '#94A3B8' if dark else '#666666'
+    
     fig.update_layout(
-        height=220,  # Slightly taller to accommodate all elements
-        margin=dict(l=20, r=20, t=50, b=40),  # More top/bottom margin for text
-        paper_bgcolor=COLORS['bg_light'],
-        plot_bgcolor=COLORS['bg_light'],
-        font={'color': COLORS['text_dark'], 'family': 'Arial, sans-serif'},
+        height=220,
+        margin=dict(l=20, r=20, t=50, b=40),
+        paper_bgcolor=bg_color,
+        plot_bgcolor=bg_color,
+        font={'color': text_color, 'family': 'Arial, sans-serif'},
         annotations=[
             dict(
-                text=f"<b style='color:{COLORS['text_dark']}'>{status}</b><br><span style='color:#666666; font-size:9px'>{target_text}</span>",
-                x=0.5, y=-0.02,  # Move annotation up slightly
+                text=f"<b>{status}</b><br><span style='font-size:9px'>{target_text}</span>",
+                x=0.5, y=-0.02,
                 showarrow=False,
-                font=dict(size=10, color=COLORS['text_dark']),
+                font=dict(size=10, color=text_color),
                 xanchor='center',
                 yanchor='top'
             )
         ]
-        # REMOVED: config={'displayModeBar': False} 
     )
-    
-    fig.update_layout(template='plotly_white')
     
     return fig
 
 
 def create_trend_line(df, x_col, y_col, title, color=None, benchmark=None):
     """Create a line chart showing trends over time with high-contrast styling"""
+    colors = get_current_colors()
+    
     fig = px.line(
         df, 
         x=x_col, 
         y=y_col,
         title=title,
-        color_discrete_sequence=[color or COLORS['primary']]
+        color_discrete_sequence=[color or colors['primary']]
     )
     
     # Add benchmark line if provided
@@ -413,25 +471,23 @@ def create_trend_line(df, x_col, y_col, title, color=None, benchmark=None):
         fig.add_hline(
             y=benchmark, 
             line_dash="dash", 
-            line_color=COLORS['poor'],
+            line_color=colors['poor'],
             line_width=2,
             annotation_text=f"Benchmark: {benchmark}",
             annotation=dict(
-                font=dict(color=COLORS['text_dark'], size=12),
-                # Use standard x position for consistency
+                font=dict(color=colors['text_dark'], size=12),
                 xref="paper", x=1, yref="y", y=benchmark, 
                 showarrow=False 
             )
         )
     
-    # Apply standard layout (FIXED: Removed 'config')
+    # Apply theme-aware layout
     fig.update_layout(
-        **STANDARD_LAYOUT,
+        **get_standard_layout(),
         height=400,
         hovermode='x unified',
         xaxis_title=x_col.replace('_', ' ').title(),
         yaxis_title=y_col.replace('_', ' ').title(),
-        # REMOVED: config={'displayModeBar': False} 
     )
     
     return fig
@@ -439,23 +495,24 @@ def create_trend_line(df, x_col, y_col, title, color=None, benchmark=None):
 
 def create_comparison_bar(df, x_col, y_col, title, color_col=None, orientation='v'):
     """Create bar chart for comparing values across categories with high-contrast styling"""
+    colors = get_current_colors()
+    
     fig = px.bar(
         df,
         x=x_col if orientation == 'v' else y_col,
         y=y_col if orientation == 'v' else x_col,
         title=title,
         color=color_col,
-        color_discrete_map=COLORS['countries'] if color_col == 'country' else None,
+        color_discrete_map=colors['countries'] if color_col == 'country' else None,
         orientation=orientation
     )
     
-    # Apply standard layout (FIXED: Removed 'config')
+    # Apply theme-aware layout
     fig.update_layout(
-        **STANDARD_LAYOUT,
+        **get_standard_layout(),
         height=400,
         xaxis_title=x_col.replace('_', ' ').title(),
         yaxis_title=y_col.replace('_', ' ').title(),
-        # REMOVED: config={'displayModeBar': False} 
     )
     
     return fig
@@ -465,33 +522,34 @@ def create_waterfall_chart(categories, values, title, yaxis_title="Amount (Curre
     """
     Create waterfall chart for financial flow visualization with high-contrast styling
     """
+    colors = get_current_colors()
+    dark = is_dark_mode()
+    text_color = '#F8FAFC' if dark else colors['text_dark']
+    
     fig = go.Figure(go.Waterfall(
         name="Financial Flow",
         orientation="v",
-        # Use 'relative' for all steps except the last, which is 'total'
         measure=["relative"] * (len(categories) - 1) + ["total"],
         x=categories,
         y=values,
-        connector={"line": {"color": COLORS['text_dark'], "width": 2}},
-        decreasing={"marker": {"color": COLORS['poor']}},
-        increasing={"marker": {"color": COLORS['good']}},
-        totals={"marker": {"color": COLORS['primary']}},
+        connector={"line": {"color": text_color, "width": 2}},
+        decreasing={"marker": {"color": colors['poor']}},
+        increasing={"marker": {"color": colors['good']}},
+        totals={"marker": {"color": colors['primary']}},
         text=values,
         textposition="outside",
-        textfont={"color": COLORS['text_dark'], "size": 12},
-        # Added a hover template for better currency display
+        textfont={"color": text_color, "size": 12},
         hovertemplate="%{x}: %{y:,.2f}<extra></extra>" 
     ))
     
-    # Create layout without conflicting keys (FIXED: Removed 'config')
-    layout = STANDARD_LAYOUT.copy()
+    # Apply theme-aware layout
+    layout = get_standard_layout()
     layout.update({
-        'title': {'text': title, 'font': {'size': 18, 'color': COLORS['text_dark']}, 'x': 0.5, 'xanchor': 'center'},
+        'title': {'text': title, 'font': {'size': 18, 'color': text_color}, 'x': 0.5, 'xanchor': 'center'},
         'height': 500,
         'showlegend': False,
         'xaxis_title': "",
         'yaxis_title': yaxis_title,
-        # REMOVED: 'config': {'displayModeBar': False} 
     })
     fig.update_layout(**layout)
     
@@ -500,6 +558,9 @@ def create_waterfall_chart(categories, values, title, yaxis_title="Amount (Curre
 
 def create_heatmap(df, x_col, y_col, value_col, title):
     """Create heatmap for visualizing values across two dimensions with high-contrast styling"""
+    colors = get_current_colors()
+    dark = is_dark_mode()
+    
     pivot_df = df.pivot_table(
         values=value_col,
         index=y_col,
@@ -518,15 +579,15 @@ def create_heatmap(df, x_col, y_col, value_col, title):
         text_auto='.1f'
     )
     
-    # Apply standard layout (FIXED: Removed 'config')
+    # Apply theme-aware layout
     fig.update_layout(
-        **STANDARD_LAYOUT,
+        **get_standard_layout(),
         height=400,
-        # REMOVED: config={'displayModeBar': False} 
     )
     
-    # Ensure text is dark
-    fig.update_traces(textfont=dict(color=COLORS['text_dark']))
+    # Ensure text is visible on heatmap
+    text_color = '#F8FAFC' if dark else colors['text_dark']
+    fig.update_traces(textfont=dict(color=text_color))
     
     return fig
 

@@ -192,6 +192,8 @@ def render_sidebar_landing(authenticator):
             Multi-country water services analytics for Uganda, Cameroon, Lesotho, and Malawi.
             
             **Data Sources:** Production, Service, Access, Finance
+            
+            **Contact:** support@wash-dashboard.org
             """)
 
 
@@ -296,6 +298,9 @@ def render_sidebar_country_dashboard(raw_data, selected_country, authenticator):
             default=available_zones,
             help="Filter data by selected zones"
         )
+        
+        # Zone filter applicability notice
+        st.caption("ℹ️ Zone filter applies to: Service, Access data. Finance & Production data are at country level.")
         
         # Date range filter
         available_years = get_available_years()

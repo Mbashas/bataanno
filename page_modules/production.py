@@ -10,6 +10,14 @@ import plotly.express as px
 import plotly.graph_objects as go
 from utils.kpi_calculator import calculate_nrw
 from utils.visualizations import create_trend_line, create_comparison_bar, create_waterfall_chart, COLORS
+from utils.ai_insights import generate_production_insights, render_ai_insights, is_ai_available
+from utils.visualizations import apply_theme_to_chart
+
+
+def show_chart(fig, **kwargs):
+    """Apply theme and display chart with proper dark mode support"""
+    apply_theme_to_chart(fig)
+    st.plotly_chart(fig, **kwargs)
 
 
 def render_production_page(data, countries_filter, date_range=None):
@@ -111,8 +119,22 @@ def render_production_page(data, countries_filter, date_range=None):
     # Production Trends
     st.header("📈 Production Trends Over Time")
     
+    # Add source filter for daily production chart
+    available_sources = ['All Sources'] + sorted(production_df['source'].unique().tolist()) if 'source' in production_df.columns else ['All Sources']
+    selected_source = st.selectbox(
+        "Filter by Water Source:",
+        available_sources,
+        help="Filter production trend by specific water source"
+    )
+    
+    # Filter data based on source selection
+    if selected_source == 'All Sources':
+        filtered_prod = production_df.copy()
+    else:
+        filtered_prod = production_df[production_df['source'] == selected_source]
+    
     # Daily production trend
-    daily_prod = production_df.groupby('date').agg({
+    daily_prod = filtered_prod.groupby('date').agg({
         'production_m3': 'sum'
     }).reset_index()
     
@@ -120,17 +142,18 @@ def render_production_page(data, countries_filter, date_range=None):
     if daily_prod.empty or len(daily_prod) < 2:
         st.info("Insufficient data for daily production trend. Need at least 2 data points.")
     else:
+        chart_title = f'Daily Production Volume - {selected_source}'
         fig = px.line(
             daily_prod,
             x='date',
             y='production_m3',
-            title='Daily Total Production Volume',
+            title=chart_title,
             labels={'production_m3': 'Production (m³)', 'date': 'Date'}
         )
         fig.update_traces(line_color=COLORS['primary'])
         fig.update_layout(height=400, hovermode='x unified')
         
-        st.plotly_chart(fig, width='stretch')
+        show_chart(fig, use_container_width=True)
     
     # Monthly trends by country
     production_df['month_year'] = production_df['date'].dt.to_period('M').astype(str)
@@ -150,15 +173,16 @@ def render_production_page(data, countries_filter, date_range=None):
     fig.update_layout(height=400, hovermode='x unified')
     fig.update_xaxes(tickangle=45)
     
-    st.plotly_chart(fig, width='stretch')
+    show_chart(fig, use_container_width=True)
     
-    st.subheader("💧 Production vs Consumption vs Losses")
+    st.subheader("💧 Water Balance: Produced → Billed → Losses")
     if w_service_df.empty:
         st.info("Consumption and metering details are not available for the selected filters.")
     else:
         total_consumption = w_service_df['total_consumption'].sum()
         nrw_volume = max(total_production_m3 - metered_total, 0)
-        categories = ["Total Production", "Metered Consumption", "Non-Revenue Water"]
+        # Improved labels as per feedback
+        categories = ["Water Produced", "Billed Consumption", "Losses (NRW)"]
         values = [
             total_production_m3 / 1_000_000,
             -metered_total / 1_000_000,
@@ -167,11 +191,11 @@ def render_production_page(data, countries_filter, date_range=None):
         waterfall_fig = create_waterfall_chart(
             categories,
             values,
-            "Water Balance Overview",
+            "Water Balance: From Production to Losses",
             yaxis_title="Volume (million m³)"
         )
-        st.plotly_chart(waterfall_fig, width='stretch')
-        st.caption("Waterfall illustrates how much of the produced volume is metered and how much is lost as non-revenue water.")
+        show_chart(waterfall_fig, use_container_width=True)
+        st.caption("Shows the flow from total water produced to billed consumption, with remaining volume as losses (NRW).")
     
     st.markdown("---")
     
@@ -203,27 +227,29 @@ def render_production_page(data, countries_filter, date_range=None):
         )
         fig.update_layout(height=400, showlegend=False)
         
-        st.plotly_chart(fig, width='stretch')
+        show_chart(fig, use_container_width=True)
     
     with col2:
-        # Service hours distribution
-        fig = px.histogram(
+        # Service hours distribution by country - Box plot (replaced histogram for better insights)
+        fig = px.box(
             production_df,
-            x='service_hours',
-            nbins=30,
-            title='Service Hours Distribution',
-            labels={'service_hours': 'Service Hours (hrs/day)', 'count': 'Frequency'},
-            color_discrete_sequence=[COLORS['primary']]
+            x='country',
+            y='service_hours',
+            title='Service Hours Distribution by Country',
+            labels={'service_hours': 'Service Hours (hrs/day)', 'country': 'Country'},
+            color='country',
+            color_discrete_map=COLORS['countries']
         )
-        fig.add_vline(
-            x=20,
+        fig.add_hline(
+            y=20,
             line_dash="dash",
             line_color="red",
-            annotation_text="Benchmark"
+            annotation_text="Benchmark: 20 hrs/day"
         )
-        fig.update_layout(height=400)
+        fig.update_layout(height=400, showlegend=False)
         
-        st.plotly_chart(fig, width='stretch')
+        show_chart(fig, use_container_width=True)
+        st.caption("Box plot shows median, quartiles, and outliers for service hours per country.")
     
     st.markdown("---")
     
@@ -253,7 +279,7 @@ def render_production_page(data, countries_filter, date_range=None):
         )
         fig.update_layout(height=400, showlegend=False)
         
-        st.plotly_chart(fig, width='stretch')
+        show_chart(fig, use_container_width=True)
     
     with col2:
         # Service hours by source (top 10)
@@ -274,7 +300,7 @@ def render_production_page(data, countries_filter, date_range=None):
         )
         fig.update_layout(height=400, showlegend=False)
         
-        st.plotly_chart(fig, width='stretch')
+        show_chart(fig, use_container_width=True)
     
     # Production source breakdown by country
     st.subheader("Production Distribution by Source and Country")
@@ -298,83 +324,18 @@ def render_production_page(data, countries_filter, date_range=None):
     )
     fig.update_layout(height=600)
     
-    st.plotly_chart(fig, width='stretch')
+    show_chart(fig, use_container_width=True)
     
     st.markdown("---")
     
-    # Diagnostic Insights
-    st.header("🔍 Diagnostic Insights")
-    
-    # Identify sources with low service hours
-    low_service_sources = prod_by_source[prod_by_source['service_hours'] < 20]
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("⚠️ Sources Below Benchmark")
-        if len(low_service_sources) > 0:
-            st.warning(f"""
-            **{len(low_service_sources)} sources** are operating below the 20 hrs/day benchmark:
-            
-            - **Average service hours**: {low_service_sources['service_hours'].mean():.1f} hrs/day
-            - **Total affected production**: {low_service_sources['production_m3'].sum() / 1_000_000:.2f}M m³
-            
-            **Recommendation**: Investigate infrastructure issues, power supply, or maintenance schedules 
-            for these sources to improve service continuity.
-            """)
-            
-            # Show table of problematic sources
-            st.dataframe(
-                low_service_sources[['source', 'service_hours', 'production_m3']].head(10),
-                width='stretch'
-            )
-        else:
-            st.success("✅ All sources are meeting or exceeding the service hours benchmark!")
-    
-    with col2:
-        st.subheader("📊 Production Efficiency")
-        
-        # Calculate production per service hour
-        prod_by_source['efficiency'] = prod_by_source['production_m3'] / prod_by_source['service_hours']
-        top_efficient = prod_by_source.nlargest(5, 'efficiency')
-        
-        st.info(f"""
-        **Most Efficient Sources** (m³ per service hour):
-        
-        {chr(10).join([f"- **{row['source']}**: {row['efficiency']:,.0f} m³/hr" 
-                       for _, row in top_efficient.iterrows()])}
-        
-        **Insight**: These sources demonstrate high production capacity relative to operating time. 
-        Consider replicating their operational practices at lower-performing sources.
-        """)
-    
-    if not finance_df.empty:
-        st.subheader("💸 Production Cost Hotspots")
-        cost_by_country = finance_df.groupby('country')['opex'].sum()
-        production_by_country = production_df.groupby('country')['production_m3'].sum()
-        unit_cost_by_country = (cost_by_country / production_by_country.replace({0: np.nan})).dropna().reset_index(name='unit_cost')
-        
-        if not unit_cost_by_country.empty:
-            high_cost = unit_cost_by_country.sort_values('unit_cost', ascending=False).head(5)
-            st.warning(f"""
-            **{len(high_cost)} countries/utilities** record the highest unit production costs:
-            
-            {chr(10).join([f"- **{row['country']}**: {row['unit_cost']:,.2f} LCU/m³" for _, row in high_cost.iterrows()])}
-            
-            **Recommendation:** Investigate high energy spend, chemical usage, and staffing levels. 
-            Prioritise energy efficiency and process optimisation programmes in these utilities.
-            """)
-        else:
-            st.info("Unit production cost could not be calculated for the selected filters.")
-    
-    # Seasonal patterns
+    # Seasonal patterns - MOVED UP per feedback
     if len(production_df) > 0:
         production_df['month'] = production_df['date'].dt.month
         monthly_pattern = production_df.groupby('month').agg({
             'production_m3': 'mean'
         }).reset_index()
         
-        st.subheader("🌦️ Seasonal Production Patterns")
+        st.header("🌦️ Seasonal Production Patterns")
         
         fig = px.line(
             monthly_pattern,
@@ -388,20 +349,55 @@ def render_production_page(data, countries_filter, date_range=None):
         fig.update_layout(height=350)
         fig.update_xaxes(tickmode='linear', tick0=1, dtick=1)
         
-        st.plotly_chart(fig, width='stretch')
-        
-        # Safe idxmax/idxmin with empty check
-        if not monthly_pattern.empty and len(monthly_pattern) > 0:
-            try:
-                peak_month = monthly_pattern.loc[monthly_pattern['production_m3'].idxmax(), 'month']
-                low_month = monthly_pattern.loc[monthly_pattern['production_m3'].idxmin(), 'month']
-                
-                st.info(f"""
-                **Peak Production Month**: Month {int(peak_month)}  
-                **Lowest Production Month**: Month {int(low_month)}
-                
-                Consider seasonal demand patterns and plan maintenance during low-demand periods.
-                """)
-            except (ValueError, KeyError):
-                st.info("Insufficient data to identify peak and low production months.")
+        show_chart(fig, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # Diagnostic Insights - AI Generated
+    st.header("🔍 Production Insights")
+    
+    # Identify sources with low service hours
+    low_service_sources = prod_by_source[prod_by_source['service_hours'] < 20]
+    
+    # Prepare production data for AI context
+    production_ai_data = {
+        'total_production_m3': total_production_m3,
+        'daily_avg': daily_avg,
+        'nrw': nrw_pct,
+        'avg_service_hours': avg_service_hours,
+        'capacity_utilization': capacity_utilization,
+        'source_count': unique_sources,
+        'low_service_sources': len(low_service_sources)
+    }
+    
+    # Get country context
+    country_context = countries_filter[0] if countries_filter and len(countries_filter) == 1 else None
+    
+    # Generate AI insights - only shows if AI is available
+    ai_insights = generate_production_insights(production_ai_data, country_context) if is_ai_available() else None
+    render_ai_insights(ai_insights, "🤖 AI-Powered Production Analysis")
+    
+    # Data tables
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("⚠️ Sources Below Benchmark")
+        if len(low_service_sources) > 0:
+            st.caption(f"{len(low_service_sources)} sources below 20 hrs/day benchmark")
+            st.dataframe(
+                low_service_sources[['source', 'service_hours', 'production_m3']].head(10),
+                use_container_width=True
+            )
+        else:
+            st.success("✅ All sources meeting benchmark!")
+    
+    with col2:
+        st.subheader("📊 Most Efficient Sources")
+        prod_by_source['efficiency'] = prod_by_source['production_m3'] / prod_by_source['service_hours'].replace({0: np.nan})
+        top_efficient = prod_by_source.nlargest(5, 'efficiency')
+        st.caption("Production per service hour (m³/hr)")
+        st.dataframe(
+            top_efficient[['source', 'efficiency', 'production_m3']].head(5),
+            use_container_width=True
+        )
 

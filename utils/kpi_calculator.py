@@ -43,13 +43,26 @@ def calculate_nrw(production, billed_volume):
     Calculate Non-Revenue Water (NRW)
     Formula: ((production_m3 - billed_volume) ÷ production_m3) × 100
     Benchmark: ≤25%
+    
+    Note: Returns 0 if metered > production (data quality issue)
     """
     if production == 0 or pd.isna(production):
         return 0
     
     nrw = ((production - billed_volume) / production) * 100
     # CRITICAL FIX: Ensure NRW cannot be negative (e.g., due to over-billing/metering)
+    # This typically indicates a data quality issue (metered > production is impossible)
     return max(0.0, nrw)
+
+
+def check_nrw_data_quality(production, metered):
+    """
+    Check for NRW data quality issues (metered > production)
+    Returns True if there's a data quality issue
+    """
+    if production == 0 or pd.isna(production):
+        return False
+    return metered > production
 
 
 def calculate_collection_efficiency(total_collection, total_billing):
