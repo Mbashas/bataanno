@@ -5,19 +5,70 @@ Redesigned with modern UI and custom branding
 """
 
 import streamlit as st
+import pandas as pd # Needed for the multi-country KPI comparison table
+import numpy as np # Needed for checking NaN in table utilities
 import plotly.graph_objects as go
 from utils.data_loader import load_all_data, get_latest_update_date
-from utils.kpi_calculator import calculate_summary_kpis
+# NOTE: You MUST have a function like this in utils/kpi_calculator.py
+# If not, the multi-country table will fail to find 'calculate_all_country_kpis'
+from utils.kpi_calculator import calculate_summary_kpis, calculate_all_country_kpis 
 from utils.visualizations import COLORS
 from utils.theme import get_theme, BRAND, LIGHT_THEME
 from assets.logo_svg import get_wash_logo_colored_svg
+
+
+# --- New Utility Functions for Table Formatting ---
+
+def format_kpi_value(value, unit=''):
+    """Utility function to safely format KPI values for the table"""
+    if pd.isna(value) or value is None:
+        return "N/A"
+    
+    # Check for NaN and return "N/A" first
+    if np.isnan(value):
+        return "N/A"
+        
+    if unit == '%':
+        return f"{value:.1f}%"
+    elif unit.lower() in ('hrs/day', 'days'):
+        return f"{value:.1f} {unit}"
+    else:
+        # Standard large number formatting
+        return f"{value:,.0f}"
+
+def get_status_icon(value, benchmark, inverse=False):
+    """Get status icon based on value, benchmark, and direction (inverse)"""
+    if pd.isna(value) or value is None or np.isnan(value):
+        return "⚪"
+    
+    # Calculate difference
+    delta = value - benchmark
+    
+    # Define "good" direction
+    is_good = (delta >= 0 and not inverse) or (delta <= 0 and inverse)
+    
+    # Define "close" (e.g., within 10% of benchmark)
+    try:
+        is_close = abs(delta) < (0.10 * abs(benchmark))
+    except (ZeroDivisionError, TypeError):
+        # Handle benchmark being 0 or non-numeric
+        is_close = False 
+
+    if is_good:
+        return '✅' # Meeting or Exceeding Target
+    elif is_close:
+        return '⚠️' # Close to Target, Needs Attention
+    else:
+        return '❌' # Needs significant improvement
+
+# --- END Utility Functions ---
 
 
 def render_home_page(data, countries_filter, date_range=None):
     """Render the home/landing page with country selection cards"""
     theme = get_theme()
     
-    # Clean page header with styled logo box
+    # Clean page header with styled logo box (UNCHANGED)
     st.markdown(f"""
     <div style="margin-bottom: 40px; display: flex; align-items: center; gap: 20px;">
         <div style="
@@ -54,7 +105,7 @@ def render_home_page(data, countries_filter, date_range=None):
     </div>
     """, unsafe_allow_html=True)
     
-    # Country Selection Section
+    # Country Selection Section (UNCHANGED)
     st.markdown(f"""
     <div style="
         margin-bottom: 24px; 
@@ -80,7 +131,7 @@ def render_home_page(data, countries_filter, date_range=None):
     </div>
     """, unsafe_allow_html=True)
     
-    # Country configuration with new theme colors
+    # Country configuration (UNCHANGED)
     countries_config = [
         {
             'name': 'Uganda',
@@ -88,7 +139,7 @@ def render_home_page(data, countries_filter, date_range=None):
             'description': 'National Water and Sewerage Corporation (NWSC)',
             'zones': 'Central, Kawempe, Nakawa, Rubaga',
             'color': theme['countries']['Uganda'],
-            'is_hero': True  # First country gets hero treatment
+            'is_hero': True 
         },
         {
             'name': 'Malawi',
@@ -116,31 +167,21 @@ def render_home_page(data, countries_filter, date_range=None):
         }
     ]
     
-    # Bento Grid Layout: 1 large hero + 3 smaller cards
-    col_hero, col_right = st.columns([1.2, 1])
+    # 💥 FIX 1: Change to 2x2 Grid Layout and remove hero logic
+    cols = st.columns(2)
     
-    # Hero card (Uganda)
-    with col_hero:
-        render_country_card_new(
-            countries_config[0]['name'],
-            countries_config[0]['emoji'],
-            countries_config[0]['description'],
-            countries_config[0]['zones'],
-            countries_config[0]['color'],
-            is_hero=True,
-            theme=theme
-        )
-    
-    # Smaller cards stack
-    with col_right:
-        for country_info in countries_config[1:]:
+    for i, country_info in enumerate(countries_config):
+        col = cols[i % 2] # 0, 1, 0, 1
+        
+        with col:
+            # All cards rendered as non-hero to maintain uniform height in 2x2 grid
             render_country_card_new(
                 country_info['name'],
                 country_info['emoji'],
                 country_info['description'],
                 country_info['zones'],
                 country_info['color'],
-                is_hero=False,
+                is_hero=False, 
                 theme=theme
             )
     
@@ -149,69 +190,84 @@ def render_home_page(data, countries_filter, date_range=None):
     # Overall Statistics Summary
     st.markdown("---")
     st.header("📊 Multi-Country Overview")
-    st.markdown("Key performance indicators across all four countries")
-    
-    kpis = calculate_summary_kpis(data)
+    st.markdown("Comparison of key performance indicators (KPIs) across all countries.")
 
-    if not kpis:
-        st.warning("No data available. Please check data files.")
+    # 💥 FIX 2: Replace aggregated KPI cards with the multi-country comparison table 💥
+    
+    try:
+        # Load KPIs for all countries
+        all_country_kpis = calculate_all_country_kpis(data)
+    except NameError:
+        st.error("Error: `calculate_all_country_kpis` not found. Ensure it is defined and imported from `utils.kpi_calculator.py`.")
         return
 
-    kpi_layout = [
-        ('water_coverage', "💧 Water Coverage"),
-        ('sanitation_coverage', "🚽 Sanitation Coverage"),
-        ('nrw', "💸 Non-Revenue Water"),
-        ('water_quality', "🔬 Water Quality"),
-        ('service_hours', "⏰ Hours of Supply"),
-        ('collection_efficiency', "💵 Revenue Collection Efficiency"),
-        ('occr', "📈 O&M Cost Coverage (OCCR)"),
-        ('personnel_cost_ratio', "👥 Personnel Cost Share"),
-        ('metering_ratio', "📊 Metering Ratio"),
-        ('staff_productivity', "🧑‍🔧 Staff Productivity"),
+    # 1. Define the Key KPIs to compare 
+    comparison_kpis_config = [
+        ('collection_efficiency', 'Revenue Collection Efficiency', '%', 95, False),
+        ('nrw', 'Non-Revenue Water (NRW)', '%', 25, True), # Inverse: lower is better
+        ('occr', 'O&M Cost Recovery Ratio', '%', 110, False), # Changed to use 'occr' key from original code
+        ('water_coverage', 'Water Service Coverage', '%', 100, False), # Changed to use 'water_coverage' key
+        ('service_hours', 'Service Continuity', 'hrs/day', 20, False), # Changed to use 'service_hours' key
+        ('water_quality', 'Water Quality Test Pass Rate', '%', 95, False), # Added a new KPI for comparison
     ]
-
-    # --- START OF CORRECTED BLOCK ---
     
-    # Initialize row_cols to an empty list.
-    row_cols = [] 
-
-    for idx, (key, title) in enumerate(kpi_layout):
-        if key not in kpis:
-            continue
-
-        col_index = idx % 5 
-
-        # If it's the start of a new row (index 0, 5, 10, etc.), create 5 columns.
-        if col_index == 0:
-            # This is the ONLY place where row_cols is assigned st.columns(5)
-            # This ensures that row_cols is a list of 5 elements before it's used.
-            row_cols = st.columns(5)
+    # 2. Build the data structure
+    kpi_data = {}
+    for country, kpi_dict in all_country_kpis.items():
+        kpi_data[country] = {}
+        for kpi_key, kpi_title, unit, benchmark, inverse in comparison_kpis_config:
             
-        # The list row_cols is now guaranteed to hold 5 columns if we continue.
-        # Check to prevent an IndexError if kpis somehow had fewer than 5 items
-        # AND was missing keys that should have been skipped (a very unlikely edge case).
-        if col_index >= len(row_cols):
-             continue
-
-        metric = kpis[key]
-        inverse = metric.get('inverse', False)
-        status, color = get_status(metric['value'], metric['benchmark'], inverse=inverse)
-        value_label = format_metric_value(metric)
-        target_label = format_metric_target(key, metric)
-
-        # Access the column safely using the index (0 to 4)
-        with row_cols[col_index]: 
-            render_kpi_card(
-                title,
-                value_label,
-                target_label,
-                color
-            )
-    # --- END OF CORRECTED BLOCK ---
+            # Safely extract the KPI object
+            metric = kpi_dict.get(kpi_key) 
+            value = None
+            if isinstance(metric, dict):
+                # Expected format: {'value': 25.5, ...}
+                value = metric.get('value')
+            elif isinstance(metric, (float, int, np.float64, np.int64)):
+                # Error format: metric is the raw value
+                value = metric
+            
+            if value is not None:
+                # Get icon and format value
+                status_icon = get_status_icon(value, benchmark, inverse)
+                formatted_value = format_kpi_value(value, unit)
+                kpi_data[country][kpi_title] = f"{status_icon} {formatted_value}"
+            else:
+                kpi_data[country][kpi_title] = "N/A"
     
+    # 3. Create DataFrame and display
+    if kpi_data:
+        df_kpis = pd.DataFrame(kpi_data).T.fillna('N/A')
+        
+        # Prepare column tooltips from config
+        column_configs = {
+            col_title: st.column_config.Column(
+                col_title,
+                help=f"Target: {benchmark}{unit} ({'Lower is Better' if inverse else 'Higher is Better'})",
+                width="small"
+            ) for kpi_key, col_title, unit, benchmark, inverse in comparison_kpis_config
+        }
+        
+        st.dataframe(
+            df_kpis, 
+            use_container_width=True,
+            column_config=column_configs
+        )
+        
+        st.markdown("""
+        <p style='font-size: 12px; color: var(--text-secondary); margin-top: 10px;'>
+        <span style='font-size: 14px;'>✅</span>: Meeting Target | 
+        <span style='font-size: 14px;'>⚠️</span>: Near Target | 
+        <span style='font-size: 14px;'>❌</span>: Needs Improvement |
+        <span style='font-size: 14px;'>⚪</span>: Data Not Available
+        </p>
+        """, unsafe_allow_html=True)
+    
+    # Original aggregated KPI card section is removed to avoid redundancy and layout conflicts.
+
     st.markdown("---")
     
-    # How to Use Guide
+    # How to Use Guide (UNCHANGED)
     with st.expander("📖 Quick Start Guide"):
         st.markdown("""
         **Getting Started**
@@ -231,7 +287,7 @@ def render_home_page(data, countries_filter, date_range=None):
         **Data Updated**: {update_date}
         """.format(update_date=get_latest_update_date()))
     
-    # Footer
+    # Footer (UNCHANGED)
     st.markdown("---")
     st.caption(f"📅 Data Last Updated: {get_latest_update_date()} | 🔄 Dashboard refreshes every hour")
 
@@ -260,22 +316,25 @@ def render_country_card(country_name, emoji, description, zones, color):
 
 
 def render_country_card_new(country_name, emoji, description, zones, color, is_hero=False, theme=None):
-    """Render a modern country selection card with clean styling"""
+    """Render a modern country selection card with clean styling - FIX APPLIED HERE"""
     if theme is None:
         theme = get_theme()
     
     # Card styling based on hero status
     if is_hero:
-        # Hero card container with accent border
+        # Hero card container - FIX: Use existing theme variables for border and shadow
         st.markdown(f"""
         <div style="
-            background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFF 100%);
+            /* FIX: Use theme variables for light/dark mode adaptability */
+            background: {theme['bg_card']}; /* Replaces linear-gradient(135deg, #FFFFFF 0%, #F8FAFF 100%); */
             border-radius: 16px;
             padding: 24px;
             margin-bottom: 16px;
-            border: 1px solid rgba(17, 63, 103, 0.08);
+            /* **FIX:** Replaced 'border_color' with existing 'border' key */
+            border: 1px solid {theme['border']}; 
             border-left: 5px solid {color};
-            box-shadow: 0 4px 16px rgba(17, 63, 103, 0.08);
+            /* Using existing 'shadow_lg' for the hero card */
+            box-shadow: {theme['shadow_lg']}; 
         ">
             <div style="display: flex; align-items: flex-start; gap: 20px;">
                 <div style="font-size: 56px; line-height: 1;">{emoji}</div>
@@ -292,16 +351,19 @@ def render_country_card_new(country_name, emoji, description, zones, color, is_h
             st.session_state.selected_country = country_name
             st.rerun()
     else:
-        # Regular card (compact)
+        # Regular card (compact) - FIX: Use existing theme variables for border and shadow
         st.markdown(f"""
         <div style="
-            background: #FFFFFF;
+            /* FIX APPLIED HERE: Use theme variables for background, border, and shadow */
+            background: {theme['bg_card']}; /* Replaces #FFFFFF */
             border-radius: 12px;
             padding: 16px 20px;
             margin-bottom: 12px;
-            border: 1px solid rgba(17, 63, 103, 0.06);
+            /* **FIX:** Replaced 'border_color' with existing 'border' key */
+            border: 1px solid {theme['border']}; 
             border-left: 4px solid {color};
-            box-shadow: 0 2px 8px rgba(17, 63, 103, 0.04);
+            /* Using existing 'shadow' key */
+            box-shadow: {theme['shadow']}; 
             transition: all 0.2s ease;
         ">
             <div style="display: flex; align-items: center; gap: 16px;">
@@ -317,6 +379,7 @@ def render_country_card_new(country_name, emoji, description, zones, color, is_h
         if st.button(f"→ View {country_name}", key=f"country_{country_name}_new", use_container_width=True):
             st.session_state.selected_country = country_name
             st.rerun()
+
 def render_kpi_card(title, value, target, color):
     """Render a KPI metric card"""
     theme = get_theme()
@@ -338,16 +401,18 @@ def render_kpi_card(title, value, target, color):
 
 def render_nav_card(title, description, page_key, button_text):
     """Render a navigation card (deprecated in new flow but kept for compatibility)"""
+    theme = get_theme()
     st.markdown(f"""
     <div style="
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        /* FIX: Use theme variables for light/dark mode adaptability */
+        background: linear-gradient(135deg, {theme['bg_dark']} 0%, {theme['bg_secondary']} 100%);
         padding: 20px;
         border-radius: 10px;
         margin-bottom: 15px;
-        color: white;
+        color: {theme['text_primary']};
     ">
-        <h3 style="margin: 0 0 10px 0; color: white;">{title}</h3>
-        <p style="margin: 0; font-size: 14px; opacity: 0.9;">{description}</p>
+        <h3 style="margin: 0 0 10px 0; color: {theme['text_primary']};">{title}</h3>
+        <p style="margin: 0; font-size: 14px; opacity: 0.9; color: {theme['text_secondary']};">{description}</p>
     </div>
     """, unsafe_allow_html=True)
     

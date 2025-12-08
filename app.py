@@ -157,7 +157,7 @@ def render_sidebar_landing(authenticator):
         # Theme toggle
         col1, col2 = st.columns([3, 1])
         with col1:
-            st.markdown("<p style='color: #F8FAFC; margin: 0; font-size: 13px;'>🎨 Theme</p>", unsafe_allow_html=True)
+            st.markdown("<p style='color: var(--text-primary); margin: 0; font-size: 13px;'>🎨 Theme</p>", unsafe_allow_html=True)
         with col2:
             theme_icon = "🌙" if st.session_state.theme == 'light' else "☀️"
             if st.button(theme_icon, key="theme_toggle_landing", help="Toggle dark/light mode"):
@@ -192,6 +192,8 @@ def render_sidebar_landing(authenticator):
             Multi-country water services analytics for Uganda, Cameroon, Lesotho, and Malawi.
             
             **Data Sources:** Production, Service, Access, Finance
+
+            If you have any questions, please contact us at [dashboard@washservices.org](mailto:dashboard@washservices.org). 
             """)
 
 
@@ -231,17 +233,17 @@ def render_sidebar_country_dashboard(raw_data, selected_country, authenticator):
                     border: 2px solid #113F67;
                 ">📊</div>
             </div>
-            <h1 style="color: #F8FAFC; margin: 0; font-size: 18px; font-weight: 700; line-height: 1.3;">
+            <h1 style="color: var(--text-primary); margin: 0; font-size: 18px; font-weight: 700; line-height: 1.3;">
                 WASH Dashboard
             </h1>
-            <p style="color: rgba(255,255,255,0.7); margin: 4px 0 0 0; font-size: 11px; letter-spacing: 0.5px;">Water • Sanitation • Hygiene</p>
+            <p style="color: var(--text-secondary); margin: 4px 0 0 0; font-size: 11px; letter-spacing: 0.5px;">Water • Sanitation • Hygiene</p>
         </div>
         """, unsafe_allow_html=True)
         
         # Theme toggle
         col1, col2 = st.columns([3, 1])
         with col1:
-            st.markdown("<p style='color: #F8FAFC; margin: 0; font-size: 13px;'>🎨 Theme</p>", unsafe_allow_html=True)
+            st.markdown("<p style='color: var(--text-primary); margin: 0; font-size: 13px;'>🎨 Theme</p>", unsafe_allow_html=True)
         with col2:
             theme_icon = "🌙" if st.session_state.theme == 'light' else "☀️"
             if st.button(theme_icon, key="theme_toggle_country", help="Toggle dark/light mode"):
@@ -255,10 +257,10 @@ def render_sidebar_country_dashboard(raw_data, selected_country, authenticator):
             role_label = "🔑 Administrator" if st.session_state.user_role == 'admin' else f"📍 {st.session_state.user_country} Manager"
             st.markdown(f"""
             <div style="padding: 12px; background: rgba(255,255,255,0.1); border-radius: 12px; margin-bottom: 16px;">
-                <p style="color: #F8FAFC; margin: 0; font-size: 14px; font-weight: 600;">
+                <p style="color: var(--text-primary); margin: 0; font-size: 14px; font-weight: 600;">
                     👤 {st.session_state.name}
                 </p>
-                <p style="color: rgba(255,255,255,0.7); margin: 4px 0 0 0; font-size: 12px;">
+                <p style="color: var(--text-secondary); margin: 4px 0 0 0; font-size: 12px;">
                     {role_label}
                 </p>
             </div>
