@@ -23,6 +23,14 @@ from utils.currency_config import (
     CURRENCY_CONFIG,
     EXCHANGE_RATE_DATE
 )
+from utils.ai_insights import generate_finance_insights, render_ai_insights, is_ai_available
+from utils.visualizations import apply_theme_to_chart
+
+
+def show_chart(fig, **kwargs):
+    """Apply theme and display chart with proper dark mode support"""
+    apply_theme_to_chart(fig)
+    st.plotly_chart(fig, **kwargs)
 
 
 def render_finance_page(data, countries_filter, date_range=None):
@@ -170,7 +178,7 @@ def render_finance_page(data, countries_filter, date_range=None):
     
     # Create comprehensive OCCR dashboard
     fig = create_cost_recovery_dashboard(finance_df)
-    st.plotly_chart(fig, width='stretch')
+    show_chart(fig, use_container_width=True)
     
     st.markdown("---")
     
@@ -206,54 +214,55 @@ def render_finance_page(data, countries_filter, date_range=None):
         row = (idx // 2) + 1
         col = (idx % 2) + 1
         
-        # Convert values based on currency mode
+        # Convert values based on currency mode - STANDARDIZED UNITS
         if is_usd_mode():
-            # Convert to USD
+            # USD mode: Always show in Millions (M)
             billed_disp = convert_to_usd(billed, country) / 1e6
             uncollected_disp = convert_to_usd(uncollected, country) / 1e6
             opex_disp = convert_to_usd(opex, country) / 1e6
             surplus_disp = convert_to_usd(surplus, country) / 1e6
             symbol = "$"
+            suffix = "M"
         else:
-            # Use local currency (scale to billions for local)
-            billed_disp = billed / 1e9
-            uncollected_disp = uncollected / 1e9
-            opex_disp = opex / 1e9
-            surplus_disp = surplus / 1e9
-            symbol = CURRENCY_CONFIG.get(country, {}).get('symbol', 'LCU')
-        
-        suffix = "M" if is_usd_mode() else "B"
+            # Local currency mode: Use Millions (M) for consistency
+            billed_disp = billed / 1e6
+            uncollected_disp = uncollected / 1e6
+            opex_disp = opex / 1e6
+            surplus_disp = surplus / 1e6
+            symbol = CURRENCY_CONFIG.get(country, {}).get('symbol', 'LCU') + " "
+            suffix = "M"
         
         fig.add_trace(
             go.Waterfall(
                 name=country,
                 orientation="v",
                 measure=["relative", "relative", "relative", "total"],
-                x=["Billed", "Uncollected", "OpEx", "Surplus/Deficit"],
-                y=[billed, -uncollected, -opex, surplus],
+                x=["Billed", "Uncollected", "OpEx", "Surplus"],
+                y=[billed_disp, -uncollected_disp, -opex_disp, surplus_disp],
                 connector={"line": {"color": "rgb(63, 63, 63)"}},
                 decreasing={"marker": {"color": COLORS['poor']}},
                 increasing={"marker": {"color": COLORS['good']}},
                 totals={"marker": {"color": COLORS['primary'] if surplus >= 0 else COLORS['poor']}},
                 text=[f"{symbol}{billed_disp:.1f}{suffix}", f"-{symbol}{uncollected_disp:.1f}{suffix}", f"-{symbol}{opex_disp:.1f}{suffix}", f"{symbol}{surplus_disp:.1f}{suffix}"],
                 textposition="outside",
-                textfont=dict(size=10)
+                textfont=dict(size=9)
             ),
             row=row,
             col=col
         )
     
     # Update subplot titles to prevent overlap
-    fig.update_annotations(font=dict(size=14), yshift=10)
+    fig.update_annotations(font=dict(size=13), yshift=15)
     
+    # Improve layout spacing
     fig.update_layout(
-        height=850,
+        height=900,
         title_text="Financial Flow: Billed → Revenue → Operating Surplus/Deficit",
         showlegend=False,
-        margin=dict(t=80, b=60, l=60, r=40)
+        margin=dict(t=100, b=80, l=80, r=60)
     )
     
-    st.plotly_chart(fig, width='stretch')
+    show_chart(fig, use_container_width=True)
     
     st.markdown("---")
     
@@ -301,7 +310,7 @@ def render_finance_page(data, countries_filter, date_range=None):
             xaxis_title='Date'
         )
         
-        st.plotly_chart(fig, width='stretch')
+        show_chart(fig, use_container_width=True)
     
     with col2:
         # OCCR trend
@@ -321,7 +330,7 @@ def render_finance_page(data, countries_filter, date_range=None):
         fig.update_traces(line_color=COLORS['primary'])
         fig.update_layout(height=400, hovermode='x unified')
         
-        st.plotly_chart(fig, width='stretch')
+        show_chart(fig, use_container_width=True)
     
     # OCCR and Collection Efficiency by Country
     country_finance = finance_df.groupby('country').agg({
@@ -351,7 +360,7 @@ def render_finance_page(data, countries_filter, date_range=None):
         )
         fig.update_layout(height=400, showlegend=False)
         
-        st.plotly_chart(fig, width='stretch')
+        show_chart(fig, use_container_width=True)
     
     with col2:
         fig = px.bar(
@@ -370,7 +379,7 @@ def render_finance_page(data, countries_filter, date_range=None):
         )
         fig.update_layout(height=400, showlegend=False)
         
-        st.plotly_chart(fig, width='stretch')
+        show_chart(fig, use_container_width=True)
     
     st.markdown("---")
     
@@ -398,7 +407,7 @@ def render_finance_page(data, countries_filter, date_range=None):
         )
         fig.update_layout(height=400)
         
-        st.plotly_chart(fig, width='stretch')
+        show_chart(fig, use_container_width=True)
     
     with col2:
         # Opex per staff
@@ -425,127 +434,99 @@ def render_finance_page(data, countries_filter, date_range=None):
         fig.update_layout(height=400, showlegend=False)
         fig.update_yaxes(title='OpEx per Staff ($)')
         
-        st.plotly_chart(fig, width='stretch')
+        show_chart(fig, use_container_width=True)
     
-    # Complaints and blocks vs revenue
-    st.subheader("Service Issues vs Financial Performance")
+    # Financial Performance by Country - Grouped Bar Chart (replaced confusing scatter)
+    st.subheader("Financial Performance Comparison")
     
-    # Calculate OCCR by country first
-    complaints_vs_occr = finance_df.groupby('country').agg({
-        'complaints': 'sum',
-        'blocks': 'sum',
+    # Calculate key metrics by country
+    performance_data = finance_df.groupby('country').agg({
         'sewer_revenue': 'sum',
-        'opex': 'sum'
+        'opex': 'sum',
+        'complaints': 'sum'
     }).reset_index()
-    complaints_vs_occr['occr'] = (complaints_vs_occr['sewer_revenue'] / complaints_vs_occr['opex']) * 100
+    performance_data['occr'] = (performance_data['sewer_revenue'] / performance_data['opex']) * 100
+    performance_data['surplus_pct'] = ((performance_data['sewer_revenue'] - performance_data['opex']) / performance_data['opex']) * 100
     
-    fig = px.scatter(
-        complaints_vs_occr,
-        x='complaints',
-        y='occr',
-        size='blocks',
-        color='country',
-        title='Complaints vs OCCR (sized by Blockages)',
-        color_discrete_map=COLORS['countries'],
-        labels={'complaints': 'Total Complaints', 'occr': 'OCCR (%)'}
-    )
+    # Create grouped bar showing OCCR and Surplus %
+    fig = go.Figure()
+    
+    fig.add_trace(go.Bar(
+        name='OCCR (%)',
+        x=performance_data['country'],
+        y=performance_data['occr'],
+        marker_color=COLORS['primary'],
+        text=performance_data['occr'].apply(lambda x: f'{x:.1f}%'),
+        textposition='outside'
+    ))
+    
+    fig.add_trace(go.Bar(
+        name='Surplus/Deficit (%)',
+        x=performance_data['country'],
+        y=performance_data['surplus_pct'],
+        marker_color=performance_data['surplus_pct'].apply(lambda x: COLORS['good'] if x >= 0 else COLORS['poor']),
+        text=performance_data['surplus_pct'].apply(lambda x: f'{x:.1f}%'),
+        textposition='outside'
+    ))
+    
     fig.add_hline(
         y=110,
         line_dash="dash",
         line_color="red",
-        annotation_text="OCCR Benchmark"
+        annotation_text="OCCR Target (110%)"
     )
-    fig.update_layout(height=500)
+    fig.add_hline(
+        y=0,
+        line_dash="solid",
+        line_color="gray",
+        annotation_text="Break-even"
+    )
     
-    st.plotly_chart(fig, width='stretch')
+    fig.update_layout(
+        title='Financial Performance: OCCR & Operating Surplus',
+        height=450,
+        barmode='group',
+        xaxis_title='Country',
+        yaxis_title='Percentage (%)',
+        legend=dict(orientation='h', yanchor='bottom', y=1.02)
+    )
+    
+    show_chart(fig, use_container_width=True)
     
     st.markdown("---")
     
-    # Diagnostic & Predictive Insights
-    st.header("🔍 Financial Insights & Projections")
+    # Financial Insights - AI Generated Only
+    st.header("🔍 Financial Insights")
     
-    col1, col2 = st.columns(2)
+    # Prepare finance data for AI context
+    occr = (total_revenue / total_opex * 100) if total_opex > 0 else 0
+    finance_ai_data = {
+        'occr': occr,
+        'collection_efficiency': collection_eff,
+        'total_revenue': total_revenue,
+        'total_opex': total_opex,
+        'surplus_deficit': total_revenue - total_opex,
+        'uncollected': uncollected,
+        'nrw_revenue_impact': (uncollected / total_billed * 100) if total_billed > 0 else 0
+    }
     
-    with col1:
-        st.subheader("📉 Diagnostic Analysis")
-        
-        # Countries below OCCR benchmark
-        low_occr = country_finance[country_finance['occr'] < 110]
-        
-        if len(low_occr) > 0:
-            st.warning(f"""
-            **{len(low_occr)} countries** are operating below the OCCR benchmark of 110%:
-            
-            {chr(10).join([f"- **{row['country']}**: {row['occr']:.1f}% OCCR" 
-                           for _, row in low_occr.iterrows()])}
-            
-            **Key Issues Identified:**
-            - Low collection efficiency contributing to revenue shortfall
-            - High operational costs relative to revenue
-            - Insufficient tariff levels to cover O&M costs
-            
-            **Root Causes:**
-            - High Non-Revenue Water (NRW) reducing billable volume
-            - Uncollected bills and payment defaults
-            - Inefficient operations and overstaffing
-            """)
-        else:
-            st.success("✅ All countries are meeting the OCCR benchmark of 110%")
+    # Get country context
+    country_context = countries_filter[0] if countries_filter and len(countries_filter) == 1 else None
     
-    with col2:
-        st.subheader("📈 Predictive Projections")
-        
-        # Calculate potential revenue recovery
-        potential_recovery = uncollected * 0.9  # Assume 90% could be recovered
-        current_gap = total_opex * 1.1 - total_revenue  # 110% OCCR target
-        
-        # Format values based on currency mode
-        uncollected_fmt = fmt_currency(uncollected)
-        recovery_fmt = fmt_currency(potential_recovery)
-        gap_fmt = fmt_currency(max(0, current_gap))
-        
-        st.info(f"""
-            **Revenue Recovery Potential:**
-            
-            - **Current uncollected revenue**: {uncollected_fmt}
-            - **Potential recovery (90%)**: {recovery_fmt}
-            - **Current OCCR gap**: {gap_fmt}
-            
-            **If collection efficiency improves to 95%:**
-            - Projected OCCR: **{((total_revenue + potential_recovery) / total_opex * 100):.1f}%**
-            - Financial sustainability: **{'✅ Achieved' if ((total_revenue + potential_recovery) / total_opex * 100) >= 110 else '⚠️ Still Below Target'}**
-            
-            **Recommended Actions:**
-            1. Implement automated billing and mobile payment systems
-            2. Enforce disconnection policies for chronic defaulters
-            3. Offer payment plans to reduce accumulated arrears
-            4. Conduct customer education on payment importance
-            """)
+    # Generate AI insights - only shows if AI is available
+    ai_insights = generate_finance_insights(finance_ai_data, country_context) if is_ai_available() else None
+    render_ai_insights(ai_insights, "🤖 AI-Powered Financial Analysis")
     
-    # Prescriptive recommendations
-    st.subheader("💡 Prescriptive Recommendations")
+    # Key metrics summary (factual data only, no projections)
+    low_occr = country_finance[country_finance['occr'] < 110]
     
-    st.success("""
-    **To Improve Financial Sustainability:**
-    
-    **Revenue Enhancement:**
-    - 📊 Implement cost-reflective tariffs (ensure full O&M cost recovery)
-    - 💳 Introduce mobile money and automated payment options
-    - 📈 Improve metering ratio to reduce commercial losses
-    - 🔧 Reduce NRW through leak detection and repair programs
-    
-    **Cost Optimization:**
-    - ⚡ Optimize energy consumption in pumping and treatment
-    - 👥 Right-size staffing based on productivity benchmarks
-    - 🔧 Implement preventive maintenance to reduce emergency repairs
-    - 📊 Adopt performance-based budgeting
-    
-    **Financial Management:**
-    - 💰 Separate capital and operating budgets
-    - 📊 Implement monthly financial reporting and variance analysis
-    - 🎯 Set country-specific OCCR improvement targets
-    - 🏦 Explore credit facilities for infrastructure investment
-    """)
+    st.subheader("📉 Countries Below OCCR Target")
+    if len(low_occr) > 0:
+        for _, row in low_occr.iterrows():
+            status_color = "🔴" if row['occr'] < 80 else "🟡"
+            st.markdown(f"{status_color} **{row['country']}**: {row['occr']:.1f}% OCCR")
+    else:
+        st.success("✅ All countries meeting OCCR benchmark")
     
     # ============================================================================
     # SECTION C: CUSTOMER PAYMENT BEHAVIOR BY ZONE (NEW)
@@ -634,7 +615,7 @@ def render_finance_page(data, countries_filter, date_range=None):
                 font={'color': COLORS['text_dark']}
             )
             
-            st.plotly_chart(fig, width='stretch')
+            show_chart(fig, use_container_width=True)
         
         # Zone comparison table
         st.subheader("Zone Performance Details")
@@ -663,7 +644,7 @@ def render_finance_page(data, countries_filter, date_range=None):
             use_container_width=True
         )
     else:
-        st.warning("⚠️ Customer billing data not available. Please ensure billing.csv is loaded.")
+        st.info("ℹ️ Customer billing data not available for current filters. Try selecting different countries or clearing filters.")
     
     # ============================================================================
     # SECTION D: PAYMENT RISK DASHBOARD (NEW)
@@ -741,7 +722,7 @@ def render_finance_page(data, countries_filter, date_range=None):
                 margin=dict(t=60, b=40, l=40, r=40)
             )
             
-            st.plotly_chart(fig, width='stretch')
+            show_chart(fig, use_container_width=True)
         
         with col_right:
             st.subheader("Unpaid Amount by Risk Category")
@@ -768,7 +749,7 @@ def render_finance_page(data, countries_filter, date_range=None):
                 plot_bgcolor=COLORS['bg_chart'],
                 font={'color': COLORS['text_dark']}
             )
-            st.plotly_chart(fig, width='stretch')
+            show_chart(fig, use_container_width=True)
         
         # Top 10 Non-Payers
         st.subheader("🔴 Top 10 Customers with Highest Unpaid Bills")
@@ -793,7 +774,7 @@ def render_finance_page(data, countries_filter, date_range=None):
             font={'color': COLORS['text_dark']}
         )
         
-        st.plotly_chart(fig, width='stretch')
+        show_chart(fig, use_container_width=True)
         
         # Actionable recommendations
         high_risk_unpaid = risk_customers[risk_customers['risk_category'] == 'High Risk']['unpaid_amount'].sum()
@@ -805,14 +786,13 @@ def render_finance_page(data, countries_filter, date_range=None):
         else:
             high_risk_unpaid_fmt = fmt_currency(high_risk_unpaid)
         
-        st.info(f"""
-        **💡 Recommended Actions:**
-        - **Immediate Priority**: Contact {high_risk_count:,} high-risk customers for payment follow-up
-        - **Potential Revenue Recovery**: {high_risk_unpaid_fmt} from high-risk customers
-        - **Focus Zones**: {', '.join(top_zones[:3])}
-        """)
+        # Display summary metrics
+        st.metric("High Risk Customers", f"{high_risk_count:,}")
+        st.metric("Unpaid Amount (High Risk)", high_risk_unpaid_fmt)
+        if top_zones:
+            st.caption(f"Top Risk Zones: {', '.join(top_zones[:3])}")
     else:
-        st.warning("⚠️ Customer billing data not available. Please ensure billing.csv is loaded.")
+        st.info("ℹ️ Customer billing data not available for current filters. Try selecting different countries or clearing filters.")
     
     # ============================================================================
     # SECTION E: COMMERCIAL VS. PHYSICAL NRW BREAKDOWN (NEW)
@@ -855,12 +835,25 @@ def render_finance_page(data, countries_filter, date_range=None):
         
         with col2:
             commercial_pct = (commercial_losses / total_produced * 100) if total_produced > 0 else 0
+            # Calculate currency value of commercial losses
+            # Estimate average tariff from billing data
+            total_billed_vol = billing_df['consumption_m3'].sum() if 'consumption_m3' in billing_df.columns else 0
+            total_billed_amt = billing_df['billed'].sum() if 'billed' in billing_df.columns else 0
+            avg_tariff = (total_billed_amt / total_billed_vol) if total_billed_vol > 0 else 0
+            commercial_losses_currency = commercial_losses * avg_tariff
+            
+            # Format currency based on mode
+            if is_usd_mode() and selected_countries:
+                currency_val_display = format_usd(convert_to_usd(commercial_losses_currency, selected_countries[0]))
+            else:
+                currency_val_display = fmt_currency(commercial_losses_currency)
+            
             st.metric(
                 "Commercial Losses",
                 f"{commercial_losses/1e6:.2f}M m³",
-                f"{commercial_pct:.1f}% of production",
+                f"≈ {currency_val_display}",
                 delta_color="inverse",
-                help="Revenue lost due to non-payment (volume equivalent)"
+                help="Revenue lost due to non-payment (volume and currency equivalent)"
             )
         
         with col3:
@@ -895,51 +888,23 @@ def render_finance_page(data, countries_filter, date_range=None):
                 margin=dict(t=60, b=40, l=60, r=60)
             )
             
-            st.plotly_chart(fig, width='stretch')
+            show_chart(fig, use_container_width=True)
         
         with col_insights:
-            st.subheader("Key Insights")
-            
-            if physical_pct > commercial_pct:
-                st.error(f"""
-                **🔧 Infrastructure Priority**
-                
-                Physical losses ({physical_pct:.1f}%) exceed commercial losses ({commercial_pct:.1f}%).
-                
-                **Recommended Actions:**
-                - Conduct leak detection surveys
-                - Repair aging infrastructure
-                - Upgrade meter accuracy
-                - Implement pressure management
-                """)
-            else:
-                st.warning(f"""
-                **💰 Revenue Management Priority**
-                
-                Commercial losses ({commercial_pct:.1f}%) exceed physical losses ({physical_pct:.1f}%).
-                
-                **Recommended Actions:**
-                - Improve billing accuracy
-                - Enhance collection efforts
-                - Implement disconnection policies
-                - Offer payment plans
-                """)
+            st.subheader("NRW Summary")
             
             total_nrw_pct = physical_pct + commercial_pct
             benchmark = 25.0
             
-            if total_nrw_pct > benchmark:
-                gap_volume = (total_produced * (total_nrw_pct - benchmark) / 100) / 1e6
-                st.info(f"""
-                **📊 Overall NRW Status**
-                
-                Total NRW: {total_nrw_pct:.1f}%  
-                Benchmark: ≤{benchmark}%  
-                Gap: {total_nrw_pct - benchmark:.1f}%
-                
-                Reducing NRW to benchmark could save:
-                - {gap_volume:.2f}M m³
-                """)
+            # Display factual metrics only
+            st.metric("Physical Losses", f"{physical_pct:.1f}%")
+            st.metric("Commercial Losses", f"{commercial_pct:.1f}%")
+            st.metric("Total NRW", f"{total_nrw_pct:.1f}%", delta=f"Benchmark: ≤{benchmark}%")
+            
+            if physical_pct > commercial_pct:
+                st.caption("🔧 Physical losses exceed commercial losses")
+            else:
+                st.caption("💰 Commercial losses exceed physical losses")
     else:
-        st.warning("⚠️ Billing or production data not available. Please ensure all datasets are loaded.")
+        st.info("ℹ️ NRW breakdown requires both billing and production data for selected filters.")
 

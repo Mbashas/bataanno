@@ -114,24 +114,15 @@ def load_billing_data():
     # Load with low_memory=False to handle mixed types in large file
     df = pd.read_csv(DATA_DIR / "billing.csv", low_memory=False)
     
-    # Parse dates - handle multiple formats (Uganda uses DD-MM-YYYY, others use YYYY-MM-DD)
-    # Store original date strings before parsing
-    original_dates = df['date'].copy()
-    
-    # First try the standard format
-    df['date'] = pd.to_datetime(df['date'], format='%Y-%m-%d', errors='coerce')
-    
-    # For rows that failed to parse (Uganda data), try the alternative format
-    failed_mask = df['date'].isna()
-    if failed_mask.any():
-        df.loc[failed_mask, 'date'] = pd.to_datetime(
-            original_dates[failed_mask], 
-            format='%d-%m-%Y', 
-            errors='coerce'
-        )
+    # Parse dates - handle multiple formats
+    # Data uses DD/MM/YYYY format (with slashes)
+    # Use dayfirst=True to handle DD/MM/YYYY format correctly
+    df['date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
     
     df['year'] = df['date'].dt.year
     df['month'] = df['date'].dt.month
+    
+    # Normalize country names (fix lowercase issues)
     df['country'] = df['country'].str.strip().str.title()
     
     # Ensure numeric columns are properly typed
@@ -193,13 +184,18 @@ def apply_filters(data, countries=None, zones=None, date_range=None):
 
         temp_df = df.copy()
 
+        # Normalize country names before filtering (safety net for cached data)
+        if 'country' in temp_df.columns:
+            temp_df['country'] = temp_df['country'].str.strip().str.title()
+
         # Apply country filter
         if countries and 'country' in temp_df.columns:
             temp_df = temp_df[temp_df['country'].isin(countries)]
 
-        # Apply zone filter (but NOT to production data which uses 'source' instead)
-        # Production data should only be filtered by country and date
-        if zones and 'zone' in temp_df.columns and name != 'production':
+        # Apply zone filter
+        # Do NOT zone-filter production (uses 'source') or billing (customer-level zones may not
+        # match the service zone list and would zero out billing data).
+        if zones and 'zone' in temp_df.columns and name not in ['production', 'billing']:
             temp_df = temp_df[temp_df['zone'].isin(zones)]
 
         # Apply date range filter

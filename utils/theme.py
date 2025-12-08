@@ -248,7 +248,7 @@ def generate_css():
             background-color: {t['bg_main']} !important;
         }}
         
-        /* Force dark text colors on main content */
+        /* Force light text colors on main content in dark mode */
         .main,
         .main p,
         .main span,
@@ -263,21 +263,56 @@ def generate_css():
         [data-testid="stMarkdownContainer"],
         [data-testid="stMarkdownContainer"] p,
         [data-testid="stMarkdownContainer"] span,
+        [data-testid="stMarkdownContainer"] strong,
+        [data-testid="stMarkdownContainer"] li,
         [data-testid="stMetricValue"],
         [data-testid="stMetricLabel"],
+        [data-testid="stMetricDelta"],
         .stMetric label,
-        .stMetric [data-testid="stMetricValue"] {{
+        .stMetric [data-testid="stMetricValue"],
+        .stCaption,
+        .stCaption p {{
             color: {t['text_primary']} !important;
         }}
         
-        /* Dark mode cards */
+        /* Dark mode subheader and caption text */
+        [data-testid="stCaptionContainer"],
+        [data-testid="stCaptionContainer"] p {{
+            color: {t['text_secondary']} !important;
+        }}
+        
+        /* Dark mode info/warning/error/success boxes */
+        .stAlert,
+        .stAlert p,
+        .stAlert span,
+        .stAlert div,
+        .stAlert strong,
+        [data-baseweb="notification"],
+        [data-baseweb="notification"] p,
+        [data-baseweb="notification"] span,
+        [data-baseweb="notification"] div {{
+            color: {t['text_primary']} !important;
+        }}
+        
+        /* Dark mode cards and containers */
         [data-testid="stExpander"],
         .streamlit-expanderHeader {{
             background-color: {t['bg_card']} !important;
             border-color: {t['border']} !important;
         }}
         
-        .streamlit-expanderHeader {{
+        .streamlit-expanderHeader,
+        .streamlit-expanderHeader p {{
+            color: {t['text_primary']} !important;
+        }}
+        
+        /* Dark mode custom HTML content - force readable text */
+        .main div[style*="background"] p,
+        .main div[style*="background"] span,
+        .main div[style*="background"] h1,
+        .main div[style*="background"] h2,
+        .main div[style*="background"] h3,
+        .main div[style*="background"] h4 {{
             color: {t['text_primary']} !important;
         }}
         
@@ -290,6 +325,16 @@ def generate_css():
             background-color: {t['bg_card']} !important;
             color: {t['text_primary']} !important;
             border-color: {t['border']} !important;
+        }}
+        
+        /* Dark mode dropdown options */
+        [data-baseweb="popover"] {{
+            background-color: {t['bg_card']} !important;
+        }}
+        
+        [data-baseweb="popover"] li,
+        [data-baseweb="menu"] li {{
+            color: {t['text_primary']} !important;
         }}
         
         /* Dark mode tabs */
@@ -306,17 +351,125 @@ def generate_css():
             background-color: {t['bg_card']} !important;
         }}
         
-        [data-testid="stDataFrame"] div {{
+        [data-testid="stDataFrame"] div,
+        [data-testid="stDataFrame"] th,
+        [data-testid="stDataFrame"] td {{
             color: {t['text_primary']} !important;
         }}
         
-        /* Dark mode alerts */
-        [data-baseweb="notification"] {{
+        /* Plotly chart text in dark mode - comprehensive */
+        .js-plotly-plot .plotly text,
+        .js-plotly-plot text.xtick,
+        .js-plotly-plot text.ytick,
+        .js-plotly-plot .xtitle,
+        .js-plotly-plot .ytitle,
+        .js-plotly-plot .gtitle,
+        .js-plotly-plot .legend text,
+        .js-plotly-plot .annotation text,
+        .js-plotly-plot .g-xtitle,
+        .js-plotly-plot .g-ytitle {{
+            fill: {t['text_primary']} !important;
+        }}
+        
+        /* Plotly chart backgrounds */
+        .js-plotly-plot .main-svg,
+        .js-plotly-plot .bg {{
+            fill: {t['bg_card']} !important;
+        }}
+        
+        /* Plotly grid and axis lines */
+        .js-plotly-plot .xgrid line,
+        .js-plotly-plot .ygrid line {{
+            stroke: #334155 !important;
+        }}
+        
+        .js-plotly-plot .xlines line,
+        .js-plotly-plot .ylines line {{
+            stroke: {t['border']} !important;
+        }}
+        
+        /* Button text in dark mode - ALL buttons */
+        .stButton > button,
+        .stButton > button span,
+        .stButton > button p,
+        .stButton > button div {{
+            color: white !important;
+        }}
+        
+        /* Secondary/outline buttons in dark mode */
+        .stButton > button[kind="secondary"],
+        .stButton > button[data-baseweb="button"][kind="secondary"] {{
+            color: {t['text_primary']} !important;
+            background-color: {t['bg_card']} !important;
+            border: 1px solid {t['border']} !important;
+        }}
+        
+        .stButton > button[kind="secondary"] span,
+        .stButton > button[kind="secondary"] p {{
+            color: {t['text_primary']} !important;
+        }}
+        
+        /* Spinner text */
+        .stSpinner > div {{
+            color: {t['text_primary']} !important;
+        }}
+        
+        /* Info/warning/success box backgrounds */
+        [data-testid="stAlert"] {{
             background-color: {t['bg_card']} !important;
         }}
         
-        [data-baseweb="notification"] div {{
+        /* Code blocks in markdown - CRITICAL for dark mode */
+        .main pre,
+        .main code,
+        [data-testid="stMarkdownContainer"] pre,
+        [data-testid="stMarkdownContainer"] code,
+        .stCodeBlock,
+        .stCodeBlock pre,
+        .stCodeBlock code {{
+            background-color: {t['bg_card']} !important;
             color: {t['text_primary']} !important;
+            border-color: {t['border']} !important;
+        }}
+        
+        /* Markdown containers with white backgrounds - override */
+        [data-testid="stMarkdownContainer"] > div {{
+            background-color: transparent !important;
+        }}
+        
+        /* Date input - comprehensive dark mode fix */
+        .stDateInput,
+        .stDateInput > div,
+        .stDateInput > div > div,
+        .stDateInput input,
+        [data-testid="stDateInput"],
+        [data-testid="stDateInput"] input,
+        [data-baseweb="input"] input,
+        [data-baseweb="base-input"] {{
+            background-color: {t['bg_card']} !important;
+            color: {t['text_primary']} !important;
+        }}
+        
+        /* Date picker dropdown/calendar */
+        [data-baseweb="calendar"],
+        [data-baseweb="datepicker"],
+        [data-baseweb="popover"] > div {{
+            background-color: {t['bg_card']} !important;
+            color: {t['text_primary']} !important;
+        }}
+        
+        [data-baseweb="calendar"] div,
+        [data-baseweb="datepicker"] div {{
+            color: {t['text_primary']} !important;
+        }}
+        
+        /* White box issue - force dark bg on any white containers in main */
+        .main [style*="background: rgb(255, 255, 255)"],
+        .main [style*="background-color: rgb(255, 255, 255)"],
+        .main [style*="background: white"],
+        .main [style*="background-color: white"] {{
+            background: {t['bg_card']} !important;
+            background-color: {t['bg_card']} !important;
         }}
         """
     
@@ -404,6 +557,20 @@ def generate_css():
         .main p, .main span, .main div, .main label {{
             color: {t['text_primary']} !important;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+        }}
+
+        /* Ensure markdown containers inherit readable text in both modes */
+        .main [data-testid="stMarkdownContainer"] p,
+        .main [data-testid="stMarkdownContainer"] span,
+        .main [data-testid="stMarkdownContainer"] li {{
+            color: {t['text_primary']} !important;
+        }}
+
+        /* Date input and label text remain visible */
+        .stDateInput label,
+        .stDateInput > div > div > input,
+        [data-testid="stDateInput"] input {{
+            color: {t['text_primary']} !important;
         }}
         
         {dark_mode_css}
@@ -609,6 +776,13 @@ def generate_css():
             box-shadow: 0 2px 8px rgba(17, 63, 103, 0.2) !important;
         }}
         
+        /* Ensure button text is always visible */
+        .stButton > button span,
+        .stButton > button p,
+        .stButton > button div {{
+            color: white !important;
+        }}
+        
         .stButton > button:hover {{
             transform: translateY(-1px) !important;
             box-shadow: 0 4px 12px rgba(17, 63, 103, 0.3) !important;
@@ -621,11 +795,27 @@ def generate_css():
         
         /* Secondary Button Style */
         .stButton > button[kind="secondary"] {{
-            background: transparent !important;
-            color: var(--primary) !important;
-            border: 1.5px solid var(--primary) !important;
+            background: {'#1a2942' if is_dark else '#FFFFFF'} !important;
+            color: {t['text_primary']} !important;
+            border: 1.5px solid {t['border']} !important;
             box-shadow: none !important;
         }}
+        
+        .stButton > button[kind="secondary"] span,
+        .stButton > button[kind="secondary"] p {{
+            color: {t['text_primary']} !important;
+        }}
+        
+        /* Main content area buttons - override for proper visibility */
+        .main .stButton > button {{
+            color: white !important;
+        }}
+        
+        .main .stButton > button span {{
+            color: white !important;
+        }}
+
+
         
         /* ===== TABS ===== */
         .stTabs [data-baseweb="tab-list"] {{
@@ -666,9 +856,17 @@ def generate_css():
             background-color: {'#FFFFFF' if not is_dark else t['bg_card']} !important;
             border: {'1.5px solid rgba(17, 63, 103, 0.15)' if not is_dark else '2px solid ' + t['border']} !important;
             border-radius: 10px !important;
-            color: {t['text_primary']} !important;
+            color: {'#1A202C' if not is_dark else t['text_primary']} !important;
             transition: all 0.2s ease !important;
             box-shadow: {'0 1px 3px rgba(17, 63, 103, 0.04)' if not is_dark else 'none'} !important;
+        }}
+        
+        /* Date input specific - ensure text visibility in BOTH modes */
+        .stDateInput input,
+        .stDateInput > div > div > input,
+        [data-testid="stDateInput"] input,
+        [data-baseweb="input"] input {{
+            color: {'#1A202C' if not is_dark else '#F8FAFC'} !important;
         }}
         
         .stSelectbox > div > div:focus-within,
