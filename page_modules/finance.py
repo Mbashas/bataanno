@@ -850,10 +850,10 @@ def render_finance_page(data, countries_filter, date_range=None):
             
             st.metric(
                 "Commercial Losses",
-                f"{commercial_losses/1e6:.2f}M m³",
-                f"≈ {currency_val_display}",
+                currency_val_display,  # Currency as main value
+                f"{commercial_losses/1e6:.2f}M m³ ({commercial_pct:.1f}%)",  # Volume as secondary
                 delta_color="inverse",
-                help="Revenue lost due to non-payment (volume and currency equivalent)"
+                help="Revenue lost due to non-payment (amount billed but not collected)"
             )
         
         with col3:
