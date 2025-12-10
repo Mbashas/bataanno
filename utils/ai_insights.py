@@ -126,12 +126,12 @@ ZONE ANALYSIS:
 
 Country Context: {country if country else 'All Countries'}
 
-Generate 3-5 bullet points with:
-1. **Descriptive Insights**: Key findings from the data
-2. **Diagnostic Insights**: Root causes and correlations identified
-3. **Priority Actions**: Top 2-3 recommended interventions
+Generate 3-4 concise bullet points:
+• **Key Findings**: 1-2 critical data observations (with numbers)
+• **Root Cause**: Main driver of underperformance
+• **Priority Action**: Single most impactful intervention
 
-Format as clean markdown with bold headings. Be specific and data-driven. Keep it concise.
+Format as SHORT bullet points. Maximum 1-2 sentences each. No introductions or conclusions.
 """
     
     cache_key = f"access_{country}_{hash(str(coverage_data))}"
@@ -163,13 +163,12 @@ FINANCIAL METRICS:
 
 Country Context: {country if country else 'All Countries'}
 
-Generate 4-5 bullet points with:
-1. **Financial Health Assessment**: Current state vs benchmarks
-2. **Revenue Risks**: Key threats to financial sustainability
-3. **Cost Drivers**: Major expense categories to optimize
-4. **Recovery Actions**: Specific interventions to improve OCCR
+Generate 3-4 concise bullet points:
+• **Financial Status**: Key metric vs benchmark (1 sentence)
+• **Primary Risk**: Biggest threat to sustainability
+• **Action Required**: Single most impactful fix
 
-Format as clean markdown. Be specific with numbers. Keep insights actionable and concise.
+Format as SHORT bullet points. Maximum 1-2 sentences each. Be specific with numbers. No introductions.
 """
     
     cache_key = f"finance_{country}_{hash(str(finance_data))}"
@@ -201,13 +200,12 @@ PRODUCTION METRICS:
 
 Country Context: {country if country else 'All Countries'}
 
-Generate 4-5 bullet points with:
-1. **Operational Performance**: Current efficiency vs targets
-2. **NRW Analysis**: Physical vs commercial loss drivers
-3. **Service Continuity Issues**: Sources or areas needing attention
-4. **Efficiency Recommendations**: Top interventions to reduce losses
+Generate 3-4 concise bullet points:
+• **Performance**: Key metric vs target (1 sentence)
+• **Loss Driver**: Primary source of NRW or inefficiency
+• **Quick Win**: Most impactful operational fix
 
-Format as clean markdown. Reference specific metrics. Keep actionable and concise.
+Format as SHORT bullet points. Maximum 1-2 sentences each. Reference specific metrics. No introductions.
 """
     
     cache_key = f"production_{country}_{hash(str(production_data))}"
@@ -239,13 +237,12 @@ SERVICE QUALITY METRICS:
 
 Country Context: {country if country else 'All Countries'}
 
-Generate 4-5 bullet points with:
-1. **Quality Assessment**: Water quality performance vs standards
-2. **Customer Service Issues**: Complaint patterns and resolution gaps
-3. **Infrastructure Gaps**: Metering and treatment deficiencies
-4. **Service Improvement Actions**: Priority interventions
+Generate 3-4 concise bullet points:
+• **Quality Status**: Key compliance metric vs 95% target
+• **Service Gap**: Biggest customer issue or infrastructure need
+• **Priority Fix**: Most impactful service improvement
 
-Format as clean markdown. Be specific with data points. Keep actionable and concise.
+Format as SHORT bullet points. Maximum 1-2 sentences each. Be specific with data. No introductions.
 """
     
     cache_key = f"service_{country}_{hash(str(service_data))}"

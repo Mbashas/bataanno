@@ -254,7 +254,19 @@ def render_service_page(data, countries_filter, date_range=None):
             },
             hover_data={'w_supplied': True, 'sewer_revenue': True}
         )
-        fig.update_layout(height=400, legend_title="Country")
+        # Fix legend overlap - position legend below chart
+        fig.update_layout(
+            height=450,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.25,
+                xanchor="center",
+                x=0.5,
+                title=""
+            ),
+            margin=dict(b=80)
+        )
         fig.add_hline(
             y=95,
             line_dash="dash",
@@ -285,7 +297,7 @@ def render_service_page(data, countries_filter, date_range=None):
             x='year',
             y='metering_ratio',
             color='country',
-            title='Metering Ratio Trend by Country',
+            title='Metering Ratio Trend',
             color_discrete_map=COLORS['countries'],
             markers=True
         )
@@ -368,7 +380,7 @@ def render_service_page(data, countries_filter, date_range=None):
             treatment_by_country,
             x='country',
             y='treatment_rate',
-            title='Wastewater Treatment Rate by Country',
+            title='Wastewater Treatment Rate',
             color='country',
             color_discrete_map=COLORS['countries']
         )
@@ -382,7 +394,7 @@ def render_service_page(data, countries_filter, date_range=None):
             treatment_by_country,
             x='country',
             y='reuse_rate',
-            title='Treated Wastewater Reuse Rate by Country',
+            title='Treated Wastewater Reuse Rate',
             color='country',
             color_discrete_map=COLORS['countries']
         )

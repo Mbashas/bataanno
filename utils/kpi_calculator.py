@@ -352,11 +352,16 @@ def calculate_summary_kpis(data):
         'inverse': False
     }
     
-    # --- 7. Non-Revenue Water (NRW) (EXISTING - Core function now caps at 0%) ---
+    # --- 7. Non-Revenue Water (NRW) - Using billing consumption data for accuracy ---
     prod_total = production['production_m3'].sum()
-    metered_total = w_service['metered'].sum() # Use metered as a proxy for billed volume
+    # Use billing consumption_m3 if available, otherwise fall back to w_service metered
+    billing = data.get('billing', pd.DataFrame()).copy()
+    if not billing.empty and 'consumption_m3' in billing.columns:
+        billed_consumption = billing['consumption_m3'].sum()
+    else:
+        billed_consumption = w_service['metered'].sum() if 'metered' in w_service.columns else 0
     kpis['nrw'] = {
-        'value': calculate_nrw(prod_total, metered_total),
+        'value': calculate_nrw(prod_total, billed_consumption),
         'benchmark': 25,
         'unit': '%',
         'inverse': True
@@ -522,10 +527,16 @@ def calculate_country_kpis(data, country):
     san_safely_basic = (s_access_latest['safely_managed'] + s_access_latest['basic']).sum()
     kpis['sanitation_coverage'] = (san_safely_basic / san_total_pop * 100) if san_total_pop > 0 else 0
     
-    # NRW
+    # NRW - Using billing consumption data for accuracy
     prod_total = production['production_m3'].sum()
-    metered_total = w_service['metered'].sum()
-    kpis['nrw'] = calculate_nrw(prod_total, metered_total)
+    # Use billing consumption_m3 if available
+    billing = data.get('billing', pd.DataFrame()).copy()
+    if not billing.empty and 'consumption_m3' in billing.columns:
+        billing_filtered = billing[billing['country'] == country]
+        billed_consumption = billing_filtered['consumption_m3'].sum()
+    else:
+        billed_consumption = w_service['metered'].sum() if 'metered' in w_service.columns else 0
+    kpis['nrw'] = calculate_nrw(prod_total, billed_consumption)
     
     # Cost Recovery Ratio (FIXED NAME)
     total_revenue_billed = finance['sewer_revenue'].sum()

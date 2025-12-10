@@ -182,7 +182,7 @@ def render_finance_page(data, countries_filter, date_range=None):
     
     st.markdown("---")
     
-    # Financial Waterfall Charts by Country
+    # Financial Waterfall Charts
     st.header("💧 Financial Waterfall Analysis")
     st.markdown("Visualizing the flow from billing to surplus/deficit for each country")
     
@@ -332,7 +332,7 @@ def render_finance_page(data, countries_filter, date_range=None):
         
         show_chart(fig, use_container_width=True)
     
-    # OCCR and Collection Efficiency by Country
+    # OCCR and Collection Efficiency
     country_finance = finance_df.groupby('country').agg({
         'sewer_revenue': 'sum',
         'opex': 'sum',
@@ -348,7 +348,7 @@ def render_finance_page(data, countries_filter, date_range=None):
             country_finance,
             x='country',
             y='occr',
-            title='OCCR by Country',
+            title='OCCR Performance',
             color='country',
             color_discrete_map=COLORS['countries']
         )
@@ -367,7 +367,7 @@ def render_finance_page(data, countries_filter, date_range=None):
             country_finance,
             x='country',
             y='collection_eff',
-            title='Collection Efficiency by Country',
+            title='Collection Efficiency',
             color='country',
             color_discrete_map=COLORS['countries']
         )
@@ -400,7 +400,7 @@ def render_finance_page(data, countries_filter, date_range=None):
             staff_by_country,
             x='country',
             y=['w_staff', 'san_staff'],
-            title='Average Staffing Levels by Country',
+            title='Average Staffing Levels',
             barmode='group',
             color_discrete_sequence=[COLORS['primary'], COLORS['secondary']],
             labels={'value': 'Average Staff Count', 'variable': 'Department'}
@@ -427,16 +427,16 @@ def render_finance_page(data, countries_filter, date_range=None):
             country_opex_staff,
             x='country',
             y='opex_per_staff',
-            title='Operating Expenses per Staff Member',
+            title='Operating Expenses per Staff Member (Annual)',
             color='country',
             color_discrete_map=COLORS['countries']
         )
         fig.update_layout(height=400, showlegend=False)
-        fig.update_yaxes(title='OpEx per Staff ($)')
+        fig.update_yaxes(title='OpEx per Staff (Annual, Local Currency)')
         
         show_chart(fig, use_container_width=True)
     
-    # Financial Performance by Country - Grouped Bar Chart (replaced confusing scatter)
+    # Financial Performance - Grouped Bar Chart
     st.subheader("Financial Performance Comparison")
     
     # Calculate key metrics by country
@@ -492,41 +492,6 @@ def render_finance_page(data, countries_filter, date_range=None):
     )
     
     show_chart(fig, use_container_width=True)
-    
-    st.markdown("---")
-    
-    # Financial Insights - AI Generated Only
-    st.header("🔍 Financial Insights")
-    
-    # Prepare finance data for AI context
-    occr = (total_revenue / total_opex * 100) if total_opex > 0 else 0
-    finance_ai_data = {
-        'occr': occr,
-        'collection_efficiency': collection_eff,
-        'total_revenue': total_revenue,
-        'total_opex': total_opex,
-        'surplus_deficit': total_revenue - total_opex,
-        'uncollected': uncollected,
-        'nrw_revenue_impact': (uncollected / total_billed * 100) if total_billed > 0 else 0
-    }
-    
-    # Get country context
-    country_context = countries_filter[0] if countries_filter and len(countries_filter) == 1 else None
-    
-    # Generate AI insights - only shows if AI is available
-    ai_insights = generate_finance_insights(finance_ai_data, country_context) if is_ai_available() else None
-    render_ai_insights(ai_insights, "🤖 AI-Powered Financial Analysis")
-    
-    # Key metrics summary (factual data only, no projections)
-    low_occr = country_finance[country_finance['occr'] < 110]
-    
-    st.subheader("📉 Countries Below OCCR Target")
-    if len(low_occr) > 0:
-        for _, row in low_occr.iterrows():
-            status_color = "🔴" if row['occr'] < 80 else "🟡"
-            st.markdown(f"{status_color} **{row['country']}**: {row['occr']:.1f}% OCCR")
-    else:
-        st.success("✅ All countries meeting OCCR benchmark")
     
     # ============================================================================
     # SECTION C: CUSTOMER PAYMENT BEHAVIOR BY ZONE (NEW)
@@ -751,8 +716,8 @@ def render_finance_page(data, countries_filter, date_range=None):
             )
             show_chart(fig, use_container_width=True)
         
-        # Top 10 Non-Payers
-        st.subheader("🔴 Top 10 Customers with Highest Unpaid Bills")
+        # Top Non-Payers
+        st.subheader("🔴 Top Customers with Highest Unpaid Bills")
         top_unpaid = risk_customers.nlargest(10, 'unpaid_amount')
         
         fig = px.bar(
@@ -760,10 +725,12 @@ def render_finance_page(data, countries_filter, date_range=None):
             x='customer_id',
             y='unpaid_amount',
             color='zone',
-            hover_data=['country', 'billed', 'paid', 'payment_ratio'],
-            title='Top 10 Customers by Unpaid Amount',
+            hover_data={'customer_id': True, 'country': True, 'zone': True, 'billed': ':.2f', 'paid': ':.2f', 'payment_ratio': ':.1%', 'unpaid_amount': ':.2f'},
+            title='Top Customers by Unpaid Amount',
             labels={'unpaid_amount': 'Unpaid Amount (USD)' if is_usd_mode() else 'Unpaid Amount (Local)', 'customer_id': 'Customer ID'}
         )
+        # Add customer ID as text on bars for better visibility
+        fig.update_traces(texttemplate='ID: %{x}', textposition='outside', textfont_size=9)
         
         fig.update_layout(
             height=500,
@@ -800,6 +767,20 @@ def render_finance_page(data, countries_filter, date_range=None):
     st.markdown("---")
     st.header("📊 Non-Revenue Water: Commercial vs. Physical Losses")
     st.markdown("Diagnose the root cause of NRW - infrastructure issues or revenue management")
+    
+    # Methodology note (per feedback about NRW discrepancy)
+    with st.expander("ℹ️ **NRW Calculation Methodology**", expanded=False):
+        st.markdown("""
+        **This section uses customer-level billing data** to provide a detailed breakdown:
+        - **Physical Losses**: Production volume minus billed consumption (leaks, theft, meter errors)
+        - **Commercial Losses**: Billed but unpaid revenue converted to volume equivalent
+        
+        **Note**: The NRW shown in the Overview/Summary pages uses a different calculation:
+        - Overview NRW = (Production - Metered Consumption) / Production
+        - This breakdown uses billing data for more granular analysis
+        
+        Minor differences between pages are expected due to different data sources and aggregation levels.
+        """)
     
     if 'billing' in data and 'production' in data and len(data['billing']) > 0:
         billing_df = data['billing']
@@ -907,4 +888,40 @@ def render_finance_page(data, countries_filter, date_range=None):
                 st.caption("💰 Commercial losses exceed physical losses")
     else:
         st.info("ℹ️ NRW breakdown requires both billing and production data for selected filters.")
+    
+    # ============================================================================
+    # SECTION F: AI-POWERED FINANCIAL INSIGHTS (MOVED TO END per feedback)
+    # ============================================================================
+    st.markdown("---")
+    st.header("🔍 Financial Insights")
+    
+    # Prepare finance data for AI context
+    occr = (total_revenue / total_opex * 100) if total_opex > 0 else 0
+    finance_ai_data = {
+        'occr': occr,
+        'collection_efficiency': collection_eff,
+        'total_revenue': total_revenue,
+        'total_opex': total_opex,
+        'surplus_deficit': total_revenue - total_opex,
+        'uncollected': uncollected,
+        'nrw_revenue_impact': (uncollected / total_billed * 100) if total_billed > 0 else 0
+    }
+    
+    # Get country context
+    country_context = countries_filter[0] if countries_filter and len(countries_filter) == 1 else None
+    
+    # Generate AI insights - only shows if AI is available
+    ai_insights = generate_finance_insights(finance_ai_data, country_context) if is_ai_available() else None
+    render_ai_insights(ai_insights, "🤖 AI-Powered Financial Analysis")
+    
+    # Key metrics summary (factual data only, no projections)
+    low_occr = country_finance[country_finance['occr'] < 110]
+    
+    st.subheader("📉 Countries Below OCCR Target")
+    if len(low_occr) > 0:
+        for _, row in low_occr.iterrows():
+            status_color = "🔴" if row['occr'] < 80 else "🟡"
+            st.markdown(f"{status_color} **{row['country']}**: {row['occr']:.1f}% OCCR")
+    else:
+        st.success("✅ All countries meeting OCCR benchmark")
 

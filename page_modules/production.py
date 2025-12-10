@@ -54,8 +54,12 @@ def render_production_page(data, countries_filter, date_range=None):
     unit_cost = (total_opex / total_production_m3) if total_production_m3 else None
     unique_sources = production_df['source'].nunique()
     daily_avg = daily_totals.mean() if not daily_totals.empty else 0
-    metered_total = w_service_df['metered'].sum() if not w_service_df.empty else 0
-    nrw_pct = calculate_nrw(total_production_m3, metered_total) if total_production_m3 else 0
+    # Use billing consumption for NRW calculation
+    billing_df = data.get('billing', pd.DataFrame()).copy()
+    if countries_filter and not billing_df.empty:
+        billing_df = billing_df[billing_df['country'].isin(countries_filter)]
+    billed_consumption = billing_df['consumption_m3'].sum() if not billing_df.empty and 'consumption_m3' in billing_df.columns else w_service_df['metered'].sum() if not w_service_df.empty else 0
+    nrw_pct = calculate_nrw(total_production_m3, billed_consumption) if total_production_m3 else 0
 
     col1, col2, col3, col4 = st.columns(4)
     
@@ -166,7 +170,7 @@ def render_production_page(data, countries_filter, date_range=None):
         x='month_year',
         y='production_m3',
         color='country',
-        title='Monthly Production by Country',
+        title='Monthly Production Trend',
         labels={'production_m3': 'Production (m³)', 'month_year': 'Month'},
         color_discrete_map=COLORS['countries']
     )
@@ -176,16 +180,15 @@ def render_production_page(data, countries_filter, date_range=None):
     show_chart(fig, use_container_width=True)
     
     st.subheader("💧 Water Balance: Produced → Billed → Losses")
-    if w_service_df.empty:
+    if billed_consumption == 0:
         st.info("Consumption and metering details are not available for the selected filters.")
     else:
-        total_consumption = w_service_df['total_consumption'].sum()
-        nrw_volume = max(total_production_m3 - metered_total, 0)
+        nrw_volume = max(total_production_m3 - billed_consumption, 0)
         # Improved labels as per feedback
         categories = ["Water Produced", "Billed Consumption", "Losses (NRW)"]
         values = [
             total_production_m3 / 1_000_000,
-            -metered_total / 1_000_000,
+            -billed_consumption / 1_000_000,
             -nrw_volume / 1_000_000
         ]
         waterfall_fig = create_waterfall_chart(
@@ -214,7 +217,7 @@ def render_production_page(data, countries_filter, date_range=None):
             service_by_country,
             x='service_hours',
             y='country',
-            title='Average Service Hours by Country',
+            title='Average Service Hours',
             orientation='h',
             color='country',
             color_discrete_map=COLORS['countries']
@@ -235,7 +238,7 @@ def render_production_page(data, countries_filter, date_range=None):
             production_df,
             x='country',
             y='service_hours',
-            title='Service Hours Distribution by Country',
+            title='Service Hours Distribution',
             labels={'service_hours': 'Service Hours (hrs/day)', 'country': 'Country'},
             color='country',
             color_discrete_map=COLORS['countries']
@@ -265,14 +268,14 @@ def render_production_page(data, countries_filter, date_range=None):
     col1, col2 = st.columns(2)
     
     with col1:
-        # Top 10 sources by production
+        # Top sources by production
         top_sources = prod_by_source.head(10)
         
         fig = px.bar(
             top_sources,
             x='production_m3',
             y='source',
-            title='Top 10 Water Sources by Production Volume',
+            title='Top Water Sources by Production Volume',
             orientation='h',
             color='production_m3',
             color_continuous_scale='Blues'
@@ -309,18 +312,40 @@ def render_production_page(data, countries_filter, date_range=None):
         'production_m3': 'sum'
     }).reset_index()
     
+    # Simplify source names for better readability (per feedback)
+    def simplify_source_name(name):
+        """Convert technical source names to user-friendly labels"""
+        # Remove common suffixes and simplify
+        name = str(name)
+        # Truncate long names and clean up
+        if len(name) > 25:
+            name = name[:22] + '...'
+        # Capitalize properly
+        return name.title().replace('_', ' ')
+    
+    source_country['source_display'] = source_country['source'].apply(simplify_source_name)
+    
     # Get top 5 sources per country
     top_sources_per_country = source_country.groupby('country').apply(
         lambda x: x.nlargest(5, 'production_m3')
     ).reset_index(drop=True)
     
+    # Calculate percentage for better tooltip
+    total_by_country = top_sources_per_country.groupby('country')['production_m3'].transform('sum')
+    top_sources_per_country['pct_of_country'] = (top_sources_per_country['production_m3'] / total_by_country * 100).round(1)
+    
     fig = px.sunburst(
         top_sources_per_country,
-        path=['country', 'source'],
+        path=['country', 'source_display'],
         values='production_m3',
-        title='Production Volume by Country and Source (Top 5 per Country)',
+        title='Production Volume by Source',
         color='production_m3',
-        color_continuous_scale='Blues'
+        color_continuous_scale='Blues',
+        custom_data=['source', 'pct_of_country']
+    )
+    # Improve hover template for clearer information
+    fig.update_traces(
+        hovertemplate='<b>%{label}</b><br>Volume: %{value:,.0f} m³<br>Share: %{customdata[1]:.1f}%<extra></extra>'
     )
     fig.update_layout(height=600)
     

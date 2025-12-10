@@ -105,7 +105,7 @@ def render_access_page(data, countries_filter, date_range=None):
     for col in ['safely_managed', 'basic', 'limited', 'unimproved', 'surface_water']:
         water_ladder[f'{col}_pct'] = (water_ladder[col] / water_ladder['popn_total'] * 100)
     
-    # Stacked bar chart
+    # Stacked bar chart with percentage labels
     fig = go.Figure()
     
     categories = ['safely_managed_pct', 'basic_pct', 'limited_pct', 'unimproved_pct', 'surface_water_pct']
@@ -113,20 +113,28 @@ def render_access_page(data, countries_filter, date_range=None):
     names = ['Safely Managed', 'Basic', 'Limited', 'Unimproved', 'Surface Water']
     
     for cat, color, name in zip(categories, colors, names):
+        # Add percentage labels on bars (only show if > 3% to avoid clutter)
+        text_values = water_ladder[cat].apply(lambda x: f'{x:.1f}%' if x > 3 else '')
         fig.add_trace(go.Bar(
             name=name,
             x=water_ladder['country'],
             y=water_ladder[cat],
-            marker_color=color
+            marker_color=color,
+            text=text_values,
+            textposition='inside',
+            textfont=dict(size=11, color='white'),
+            insidetextanchor='middle'
         ))
     
     fig.update_layout(
         barmode='stack',
-        title='Water Access Distribution by Country (JMP Ladder)',
+        title='Water Access Distribution (JMP Ladder)',
         xaxis_title='Country',
         yaxis_title='Population (%)',
         height=450,
-        hovermode='x unified'
+        hovermode='x unified',
+        uniformtext_minsize=8,
+        uniformtext_mode='hide'
     )
     
     show_chart(fig, use_container_width=True)
@@ -179,7 +187,7 @@ def render_access_page(data, countries_filter, date_range=None):
     for col in ['safely_managed', 'basic', 'limited', 'unimproved', 'open_def']:
         san_ladder[f'{col}_pct'] = (san_ladder[col] / san_ladder['popn_total'] * 100)
     
-    # Stacked bar chart
+    # Stacked bar chart with percentage labels
     fig = go.Figure()
     
     categories = ['safely_managed_pct', 'basic_pct', 'limited_pct', 'unimproved_pct', 'open_def_pct']
@@ -187,20 +195,28 @@ def render_access_page(data, countries_filter, date_range=None):
     names = ['Safely Managed', 'Basic', 'Limited', 'Unimproved', 'Open Defecation']
     
     for cat, color, name in zip(categories, colors, names):
+        # Add percentage labels on bars (only show if > 3% to avoid clutter)
+        text_values = san_ladder[cat].apply(lambda x: f'{x:.1f}%' if x > 3 else '')
         fig.add_trace(go.Bar(
             name=name,
             x=san_ladder['country'],
             y=san_ladder[cat],
-            marker_color=color
+            marker_color=color,
+            text=text_values,
+            textposition='inside',
+            textfont=dict(size=11, color='white'),
+            insidetextanchor='middle'
         ))
     
     fig.update_layout(
         barmode='stack',
-        title='Sanitation Access Distribution by Country (JMP Ladder)',
+        title='Sanitation Access Distribution (JMP Ladder)',
         xaxis_title='Country',
         yaxis_title='Population (%)',
         height=450,
-        hovermode='x unified'
+        hovermode='x unified',
+        uniformtext_minsize=8,
+        uniformtext_mode='hide'
     )
     
     show_chart(fig, use_container_width=True)
@@ -215,24 +231,28 @@ def render_access_page(data, countries_filter, date_range=None):
         (san_trend['safely_managed'] + san_trend['basic']) / san_trend['popn_total'] * 100
     )
     
-    fig = px.line(
-        san_trend,
-        x='year',
-        y='coverage',
-        color='country',
-        title='Sanitation Coverage Trend (Safely Managed + Basic)',
-        color_discrete_map=COLORS['countries'],
-        markers=True
-    )
-    fig.add_hline(
-        y=100,
-        line_dash="dash",
-        line_color="red",
-        annotation_text="Universal Coverage Target"
-    )
-    fig.update_layout(height=400, hovermode='x unified')
-    
-    show_chart(fig, use_container_width=True)
+    # Validate data before visualization
+    if san_trend.empty or len(san_trend) < 2:
+        st.info("📊 Insufficient sanitation trend data available for the selected filters. Need at least 2 data points to show trends.")
+    else:
+        fig = px.line(
+            san_trend,
+            x='year',
+            y='coverage',
+            color='country',
+            title='Sanitation Coverage Trend (Safely Managed + Basic)',
+            color_discrete_map=COLORS['countries'],
+            markers=True
+        )
+        fig.add_hline(
+            y=100,
+            line_dash="dash",
+            line_color="red",
+            annotation_text="Universal Coverage Target"
+        )
+        fig.update_layout(height=400, hovermode='x unified')
+        
+        show_chart(fig, use_container_width=True)
     
     st.markdown("---")
     
@@ -286,7 +306,7 @@ def render_access_page(data, countries_filter, date_range=None):
             coverage_gap,
             x='country',
             y='gap',
-            title='Water Access Gap by Country',
+            title='Water Access Gap',
             color='country',
             color_discrete_map=COLORS['countries']
         )

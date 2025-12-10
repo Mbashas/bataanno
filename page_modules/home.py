@@ -112,6 +112,34 @@ def render_home_page(data, countries_filter, date_range=None):
         }
     ]
     
+    # Country Performance Summary - Individual country KPI cards (MOVED UP per feedback)
+    st.header("📊 Country Performance Summary")
+    st.markdown("Key performance indicators for each country")
+    
+    # Calculate KPIs for each country
+    country_names = ['Uganda', 'Malawi', 'Lesotho', 'Cameroon']
+    country_emojis = {'Uganda': '🇺🇬', 'Malawi': '🇲🇼', 'Lesotho': '🇱🇸', 'Cameroon': '🇨🇲'}
+    
+    # Display country KPI summary cards in 2x2 grid
+    row1_col1, row1_col2 = st.columns(2)
+    row2_col1, row2_col2 = st.columns(2)
+    
+    country_cols = [row1_col1, row1_col2, row2_col1, row2_col2]
+    
+    for idx, country_name in enumerate(country_names):
+        country_kpis = calculate_country_kpis(data, country_name)
+        
+        with country_cols[idx]:
+            render_country_kpi_summary(
+                country_name,
+                country_emojis[country_name],
+                country_kpis,
+                theme['countries'][country_name],
+                theme
+            )
+    
+    st.markdown("---")
+    
     # Equal 2x2 Grid Layout for all countries
     # First row
     col1, col2 = st.columns(2)
@@ -156,33 +184,6 @@ def render_home_page(data, countries_filter, date_range=None):
         )
     
     st.markdown("<div style='height: 32px;'></div>", unsafe_allow_html=True)
-    
-    # Country Performance Summary - Individual country KPI cards
-    st.markdown("---")
-    st.header("📊 Country Performance Summary")
-    st.markdown("Key performance indicators for each country")
-    
-    # Calculate KPIs for each country
-    country_names = ['Uganda', 'Malawi', 'Lesotho', 'Cameroon']
-    country_emojis = {'Uganda': '🇺🇬', 'Malawi': '🇲🇼', 'Lesotho': '🇱🇸', 'Cameroon': '🇨🇲'}
-    
-    # Display country KPI summary cards in 2x2 grid
-    row1_col1, row1_col2 = st.columns(2)
-    row2_col1, row2_col2 = st.columns(2)
-    
-    country_cols = [row1_col1, row1_col2, row2_col1, row2_col2]
-    
-    for idx, country_name in enumerate(country_names):
-        country_kpis = calculate_country_kpis(data, country_name)
-        
-        with country_cols[idx]:
-            render_country_kpi_summary(
-                country_name,
-                country_emojis[country_name],
-                country_kpis,
-                theme['countries'][country_name],
-                theme
-            )
     
     st.markdown("---")
     
@@ -340,13 +341,13 @@ def render_country_kpi_summary(country_name, emoji, kpis, color, theme):
     water_coverage = kpis.get('water_service_coverage', 0)
     service_hours = kpis.get('service_continuity', 0)
     
-    # Determine NRW status color
+    # Determine NRW status color (Benchmark: ≤25%)
     nrw_color = COLORS['good'] if nrw <= 25 else (COLORS['acceptable'] if nrw <= 37.5 else COLORS['poor'])
-    # Cost recovery status
+    # Cost recovery status (Benchmark: ≥100%)
     cr_color = COLORS['good'] if cost_recovery >= 100 else (COLORS['acceptable'] if cost_recovery >= 80 else COLORS['poor'])
-    # Water coverage status
+    # Water coverage status (Target: 100%)
     wc_color = COLORS['good'] if water_coverage >= 90 else (COLORS['acceptable'] if water_coverage >= 70 else COLORS['poor'])
-    # Service hours status
+    # Service hours status (Target: ≥20 hrs/day)
     sh_color = COLORS['good'] if service_hours >= 20 else (COLORS['acceptable'] if service_hours >= 16 else COLORS['poor'])
     
     # Check for data quality issues (Cameroon NRW)
@@ -370,22 +371,22 @@ def render_country_kpi_summary(country_name, emoji, kpis, color, theme):
             <h4 style="color: {theme['text_primary']}; margin: 0; font-size: 1.1rem; font-weight: 700;">{country_name}</h4>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div style="background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px;">
-                <p style="margin: 0; font-size: 11px; color: {theme['text_muted']};">NRW</p>
+            <div style="background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px;" title="Non-Revenue Water: Target ≤25%">
+                <p style="margin: 0; font-size: 11px; color: {theme['text_muted']};">NRW <span style="font-size: 9px; opacity: 0.7;">(≤25%)</span></p>
                 <p style="margin: 2px 0 0 0; font-size: 18px; font-weight: 700; color: {nrw_color};">
                     {nrw_warning if nrw_warning else f"{nrw:.1f}%"}
                 </p>
             </div>
-            <div style="background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px;">
-                <p style="margin: 0; font-size: 11px; color: {theme['text_muted']};">Cost Recovery</p>
+            <div style="background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px;" title="Cost Recovery Ratio: Target ≥100%">
+                <p style="margin: 0; font-size: 11px; color: {theme['text_muted']};">Cost Recovery <span style="font-size: 9px; opacity: 0.7;">(≥100%)</span></p>
                 <p style="margin: 2px 0 0 0; font-size: 18px; font-weight: 700; color: {cr_color};">{cost_recovery:.1f}%</p>
             </div>
-            <div style="background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px;">
-                <p style="margin: 0; font-size: 11px; color: {theme['text_muted']};">Water Coverage</p>
+            <div style="background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px;" title="Water Service Coverage: Target 100%">
+                <p style="margin: 0; font-size: 11px; color: {theme['text_muted']};">Water Coverage <span style="font-size: 9px; opacity: 0.7;">(100%)</span></p>
                 <p style="margin: 2px 0 0 0; font-size: 18px; font-weight: 700; color: {wc_color};">{water_coverage:.1f}%</p>
             </div>
-            <div style="background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px;">
-                <p style="margin: 0; font-size: 11px; color: {theme['text_muted']};">Service Hours</p>
+            <div style="background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px;" title="Service Hours: Target ≥20 hrs/day">
+                <p style="margin: 0; font-size: 11px; color: {theme['text_muted']};">Service Hours <span style="font-size: 9px; opacity: 0.7;">(≥20)</span></p>
                 <p style="margin: 2px 0 0 0; font-size: 18px; font-weight: 700; color: {sh_color};">{service_hours:.1f} hrs</p>
             </div>
         </div>

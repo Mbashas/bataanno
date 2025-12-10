@@ -166,21 +166,22 @@ def build_insights_prompt(kpis, country_kpis):
             country_data_string += f"- Water Service Coverage: {data.get('water_service_coverage', 0):.1f}% (Target 100%)\n"
 
     return f"""
-    You are an expert Water Sector Performance Analyst. Analyze the following KPI data and generate 3 to 5 clear, actionable, and concise insights.
+    You are an expert Water Sector Performance Analyst. Generate exactly 4 SHORT bullet points:
 
-    Divide your output into two sections:
-    1. **Descriptive Insights:** State 2-3 key findings directly from the data (e.g., performance against benchmarks).
-    2. **Diagnostic Insights:** State 1-2 key correlations or root causes identified from the data (e.g., 'Country X's high NRW is the main driver of low Cost Recovery').
+    • **Key Finding**: Most critical metric vs benchmark (1 sentence max)
+    • **Top Performer**: Best performing country/area with data
+    • **Concern**: Biggest underperformance with specific number  
+    • **Root Cause**: Main driver linking NRW, Collection, or Cost Recovery
 
-    Format the output as a clean, single markdown block with bold headings and bullet points. Do NOT include any introductory or concluding conversational text.
+    RULES: 
+    - Each bullet MUST be 1-2 sentences maximum
+    - Include specific numbers from the data
+    - NO introductions, conclusions, or extra text
+    - Use bullet format only (•)
 
     KPI DATA:
     {'\n'.join([f'- {item}' for item in kpi_list])}
     {country_data_string}
-
-    Correlations to consider:
-    - Low Cost Recovery Ratio correlates with high NRW and low Collection Efficiency.
-    - High Complaint Volume/Resolution Time suggests inadequate service delivery quality.
     """
 
 
