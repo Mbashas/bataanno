@@ -538,11 +538,12 @@ def main():
         st.stop()
     
     # Create authenticator object
+    # Using session-only authentication (no persistent cookies)
     authenticator = stauth.Authenticate(
         config['credentials'],
-        config['cookie']['name'],
-        config['cookie']['key'],
-        config['cookie']['expiry_days']
+        cookie_name='wash_session',
+        cookie_key='wash_temp_key',
+        cookie_expiry_days=0  # Session-only, expires when browser closes
     )
     
     # Check authentication status

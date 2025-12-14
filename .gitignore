@@ -24,7 +24,7 @@ wheels/
 venv/
 env/
 ENV/
-.venv
+.venv/
 
 # IDEs
 .vscode/
@@ -32,10 +32,13 @@ ENV/
 *.swp
 *.swo
 *~
-.DS_Store
 
-# Streamlit config (keeping for theme settings)
-# .streamlit/
+# OS files
+.DS_Store
+Thumbs.db
+
+# Streamlit secrets (never commit real secrets)
+.streamlit/secrets.toml
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -43,36 +46,29 @@ ENV/
 # Environment variables
 .env
 .env.local
+.env.production
 
-# Data files (if you don't want to commit data)
-# Large CSV files - keep local only
-#Data/billing.csv
-# Uncomment below to ignore all CSV files
+# Keep template files for documentation
+!.env.example
+
+# Data files (uncomment to ignore large CSVs)
 # Data/*.csv
 
 # Logs
 *.log
 
-# OS files
-Thumbs.db
-.DS_Store
-
 # Temporary files
 *.tmp
 *.bak
 
-# Documentation - Keep only README.md
-# Ignore all markdown files except README.md
+# Documentation - selective markdown files
 *.md
 !README.md
 !CALCULATIONS_GUIDE.md
-# Generated PDF reports
-*.pdf
-water_services_performance_report.pdf
 
-.streamlit/secrets.toml
+# Generated reports
+*.pdf
+
+# Development utilities (not needed in production)
 generate_password.py
-.streamlit/secrets.toml
-.streamlit/secrets.toml
-.gitignore
-.streamlit/secrets.toml
+test_setup.py

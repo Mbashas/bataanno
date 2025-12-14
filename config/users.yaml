@@ -34,8 +34,8 @@ credentials:
       email: cameroon@washboard.org
       role: country_manager
       country: Cameroon
-
 cookie:
   expiry_days: 30
   key: wash_dashboard_secret_key_2024
   name: wash_dashboard_auth
+
