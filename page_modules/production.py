@@ -326,9 +326,12 @@ def render_production_page(data, countries_filter, date_range=None):
     source_country['source_display'] = source_country['source'].apply(simplify_source_name)
     
     # Get top 5 sources per country
-    top_sources_per_country = source_country.groupby('country', group_keys=False).apply(
-        lambda x: x.nlargest(5, 'production_m3')
-    ).reset_index(drop=True)
+    top_sources_per_country = (
+        source_country.sort_values('production_m3', ascending=False)
+        .groupby('country')
+        .head(5)
+        .reset_index(drop=True)
+    )
     
     # Calculate percentage for better tooltip
     total_by_country = top_sources_per_country.groupby('country')['production_m3'].transform('sum')
