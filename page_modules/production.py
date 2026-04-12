@@ -326,7 +326,7 @@ def render_production_page(data, countries_filter, date_range=None):
     source_country['source_display'] = source_country['source'].apply(simplify_source_name)
     
     # Get top 5 sources per country
-    top_sources_per_country = source_country.groupby('country').apply(
+    top_sources_per_country = source_country.groupby('country', group_keys=False).apply(
         lambda x: x.nlargest(5, 'production_m3')
     ).reset_index(drop=True)
     
