@@ -48,7 +48,7 @@ def is_ai_available():
     return init_ai()
 
 
-MODEL_NAME = "gemini-2.0-flash"
+MODEL_NAME = "gemini-2.5-flash"
 
 
 def _generate_insights(prompt: str, cache_key: str) -> Optional[str]:
