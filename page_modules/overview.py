@@ -205,6 +205,130 @@ def get_ai_insights(kpis, country_kpis):
 # --- END NEW FUNCTIONS ---
 
 
+def _render_chat_panel(summary_kpis, country_kpis):
+    """
+    Render the inner chat experience (history, suggested prompts, input and
+    export) for the floating AI Data Assistant widget.
+    """
+    # Rebuild the session whenever the underlying KPI context changes
+    system_prompt = build_system_prompt(summary_kpis, country_kpis)
+
+    context_changed = (
+        "chat_session" not in st.session_state
+        or st.session_state.get("chat_session") is None
+        or st.session_state.get("chat_system_prompt") != system_prompt
+    )
+
+    if context_changed:
+        with st.spinner("Initializing AI context..."):
+            st.session_state.chat_session, st.session_state.chat_system_prompt = get_chat_session(system_prompt)
+            st.session_state.messages = []  # Reset history for new context
+
+    chat = st.session_state.chat_session
+    if not chat:
+        return
+
+    # Are we waiting for an AI response to the last user message?
+    is_waiting_for_response = (
+        st.session_state.messages and st.session_state.messages[-1]["role"] == "user"
+    )
+
+    # Seed a welcome message the first time the panel opens
+    if not st.session_state.messages:
+        st.session_state.messages.append(
+            {"role": "assistant",
+             "content": """
+Hello! I'm your **AI Data Assistant** for this dashboard.
+I can analyze all current KPI data, explain correlations, and help you navigate the system.
+
+Feel free to ask me:
+1. **Data Questions:** "What is the Cost Recovery Ratio?"
+2. **Diagnostic Questions:** "Why is our NRW a financial risk?"
+3. **System Help:** "Where can I find the country-level comparison charts?"
+
+Start by clicking one of the suggested prompts below!
+"""}
+        )
+
+    # --- Chat history (scrollable, sized to fit the floating panel) ---
+    chat_history_container = st.container(height=300, border=True)
+    with chat_history_container:
+        for message in st.session_state.messages:
+            avatar = "🤖" if message["role"] == "assistant" else "👤"
+            with st.chat_message(message["role"], avatar=avatar):
+                st.markdown(message["content"])
+
+    prompt = None
+    submitted_prompt = None
+
+    # --- Suggested prompts (only before the conversation starts) ---
+    conversation_started = any(m["role"] == "user" for m in st.session_state.messages)
+    if not conversation_started and not is_waiting_for_response:
+        suggested_prompts = [
+            "What is the biggest operational challenge (NRW)?",
+            "How does low Revenue Collection affect profit/loss?",
+            "Where can I find the Service Continuity trend?",
+        ]
+        for i, prompt_text in enumerate(suggested_prompts):
+            if st.button(prompt_text, use_container_width=True, key=f"suggested_btn_{i}"):
+                st.session_state.input_prompt = prompt_text
+                st.rerun()
+
+    # --- Capture prompt: suggested button OR the chat input box ---
+    if "input_prompt" in st.session_state and st.session_state.input_prompt:
+        prompt = st.session_state.input_prompt
+        del st.session_state.input_prompt
+    elif not is_waiting_for_response:
+        submitted_prompt = st.chat_input("Ask me about coverage, costs, or efficiency...")
+        if submitted_prompt:
+            prompt = submitted_prompt
+
+    # Phase 1: capture prompt and rerun to immediately show the user's message
+    if prompt:
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.rerun()
+
+    # --- Export the dialog ---
+    if st.session_state.messages:
+        dialog_content = ""
+        for msg in st.session_state.messages:
+            role = "USER" if msg["role"] == "user" else "ASSISTANT"
+            dialog_content += f"**{role}:**\n{msg['content']}\n\n---\n\n"
+
+        st.download_button(
+            label="📥 Export Chat (TXT)",
+            data=dialog_content,
+            file_name="ai_data_assistant_dialog.txt",
+            mime="text/plain",
+            type="secondary",
+            use_container_width=True,
+        )
+
+    # Phase 2: stream the AI response
+    if is_waiting_for_response:
+        current_prompt = st.session_state.messages[-1]["content"]
+
+        with chat_history_container:
+            with st.chat_message("assistant", avatar="🤖"):
+                response_container = st.empty()
+                with st.spinner(f"Analyzing data for '{current_prompt[:30]}...'"):
+                    full_response = ""
+                    try:
+                        chat = st.session_state.chat_session
+                        response = chat.send_message(current_prompt, stream=True)
+                        for chunk in response:
+                            if chunk.text:
+                                full_response += chunk.text
+                                response_container.markdown(full_response + "▌")
+                        response_container.markdown(full_response)
+                    except Exception as e:
+                        full_response = f"An error occurred: {e}"
+                        st.error(full_response)
+
+        st.session_state.messages.append({"role": "assistant", "content": full_response})
+        st.rerun()
+
+
 def render_overview_page(data, countries_filter, date_range=None):
     """Render the overview dashboard page"""
     
@@ -331,157 +455,75 @@ def render_overview_page(data, countries_filter, date_range=None):
             st.markdown(ai_insights_markdown)
         # If no AI insights available, show nothing (no fallback)
     
- # --- 2. AI Chat Assistant Implementation (FINAL, SINGLE COLUMN FIX) ---
+    # --- 2. AI Chat Assistant: floating toggle widget (bottom-right) ---
 
-    st.markdown("---")
-    st.subheader("💬 AI Data Assistant")
+    # Collapsed/expanded state persists across reruns
+    if "chat_open" not in st.session_state:
+        st.session_state.chat_open = False
+    chat_is_open = st.session_state.chat_open
 
-    if not api_key_configured:
-        st.info("AI Assistant requires a valid API key. Configure GEMINI_API_KEY in .streamlit/secrets.toml to enable.")
-        return # Stop chat functionality if client failed to initialize
+    # Pin the widget to the bottom-right corner. Streamlit tags keyed
+    # containers with a `st-key-<key>` class that we can target with CSS.
+    if chat_is_open:
+        # `!important` is required so the opaque card background wins over
+        # Streamlit's default (transparent) vertical-block styling.
+        panel_style = (
+            "width: 420px; max-width: 92vw;"
+            "background-color: #FFFFFF !important;"
+            "border: 1px solid rgba(17, 63, 103, 0.15) !important;"
+            "border-radius: 14px !important;"
+            "padding: 0.75rem 1rem 0.5rem 1rem !important;"
+            "box-shadow: 0 10px 30px rgba(17, 63, 103, 0.25) !important;"
+            "max-height: 85vh; overflow-y: auto;"
+        )
+    else:
+        panel_style = "width: auto;"
 
-    # Check context change
-    system_prompt = build_system_prompt(summary_kpis, country_kpis)
-    
-    context_changed = (
-        "chat_session" not in st.session_state
-        or st.session_state.get("chat_session") is None
-        or st.session_state.get("chat_system_prompt") != system_prompt
+    st.markdown(
+        f"""
+        <style>
+        .st-key-ai_chat_widget {{
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 1000;
+            {panel_style}
+        }}
+        /* Circular floating action button when collapsed */
+        .st-key-chat_fab button {{
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            font-size: 1.6rem;
+            padding: 0;
+            box-shadow: 0 6px 18px rgba(17, 63, 103, 0.35);
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
     )
 
-    if context_changed:
-        # Initialize a new session and capture the system prompt
-        with st.spinner("Initializing AI context..."):
-            st.session_state.chat_session, st.session_state.chat_system_prompt = get_chat_session(system_prompt)
-            st.session_state.messages = [] # Reset history for new context
-
-    chat = st.session_state.chat_session
-
-    if chat:
-        
-        # --- PHASE 0: Suggested Prompts (TOP ROW) ---
-
-        suggested_prompts = [
-            "What is the biggest operational challenge (NRW)?",
-            "How does low Revenue Collection affect profit/loss?",
-            "Where can I find the Service Continuity trend?",
-        ]
-
-        # Use columns for horizontal layout of buttons (TOP ROW)
-        cols_prompts = st.columns(3)
-        for i, (col, prompt_text) in enumerate(zip(cols_prompts, suggested_prompts)):
-            # Ensure unique key for each button
-            if col.button(prompt_text, use_container_width=True, key=f"top_btn_{i}"): 
-                st.session_state.input_prompt = prompt_text
+    widget = st.container(key="ai_chat_widget")
+    with widget:
+        if not chat_is_open:
+            # Collapsed: show only the floating action button
+            fab = st.container(key="chat_fab")
+            with fab:
+                if st.button("💬", help="Ask the AI Data Assistant"):
+                    st.session_state.chat_open = True
+                    st.rerun()
+        else:
+            # Expanded: header bar with a close control, then the chat panel
+            head_l, head_r = st.columns([0.8, 0.2], vertical_alignment="center")
+            head_l.markdown("#### 💬 AI Data Assistant")
+            if head_r.button("✕", key="chat_close", help="Close assistant", use_container_width=True):
+                st.session_state.chat_open = False
                 st.rerun()
-                
-        # Determine if we are waiting for an AI response
-        is_waiting_for_response = (
-            st.session_state.messages and st.session_state.messages[-1]["role"] == "user"
-        )
-        
-        # --- 2b. Display Chat History (Fixed Height) ---
-        
-        # If messages history is empty, add welcome message
-        if not st.session_state.messages:
-            st.session_state.messages.append(
-                {"role": "assistant", 
-                 "content": """
-Hello! I'm your **AI Data Assistant** for this dashboard. 
-I can analyze all current KPI data, explain correlations, and help you navigate the system. 
-                 
-Feel free to ask me:
-1. **Data Questions:** "What is the Cost Recovery Ratio?"
-2. **Diagnostic Questions:** "Why is our NRW a financial risk?"
-3. **System Help:** "Where can I find the country-level comparison charts?"
-                 
-Start by clicking one of the suggested prompts above!
-"""
-                }
-            )
-            
-        # Place chat history in a fixed-height container
-        chat_history_container = st.container(height=400, border=True)
-        
-        with chat_history_container: 
-            for message in st.session_state.messages:
-                avatar = "🤖" if message["role"] == "assistant" else "👤"
-                with st.chat_message(message["role"], avatar=avatar):
-                    st.markdown(message["content"])
 
-        
-        # --- Input Handling and Reruns (STEP 1: Capture Prompt) ---
-        
-        prompt = None 
-        submitted_prompt = None
-
-        # Handle suggested button prompt 
-        if "input_prompt" in st.session_state and st.session_state.input_prompt:
-            prompt = st.session_state.input_prompt
-            del st.session_state.input_prompt
-        # Only show the chat input if we are NOT waiting for a response (This fixes the input locking)
-        elif not is_waiting_for_response:
-            # --- CHAT INPUT LINE (The main input box) ---
-            submitted_prompt = st.chat_input("Ask me about coverage, costs, or efficiency...")
-            if submitted_prompt:
-                prompt = submitted_prompt
-
-        # --- PHASE 1: Capture Prompt and Trigger Rerun for Display ---
-        if prompt:
-            # 1. Add user message to history
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            # 2. Rerun the app to immediately display the user's message 
-            st.rerun() 
-            
-        # --- Export Dialog Feature (STEP 2: Renders *After* the chat_input, but *Before* the Phase 2 Rerun) ---
-        if st.session_state.messages:
-            dialog_content = ""
-            for msg in st.session_state.messages:
-                role = "USER" if msg["role"] == "user" else "ASSISTANT"
-                dialog_content += f"**{role}:**\n{msg['content']}\n\n---\n\n"
-
-            # This button will now appear directly below the st.chat_input box
-            st.download_button(
-                label="📥 Export Chat Dialog (TXT)",
-                data=dialog_content,
-                file_name="ai_data_assistant_dialog.txt",
-                mime="text/plain",
-                type="secondary"
-            )
-
-
-        # --- PHASE 2: GENERATING RESPONSE BLOCK ---
-        if is_waiting_for_response:
-            
-            current_prompt = st.session_state.messages[-1]["content"]
-
-            # Display the AI's response in a dedicated chat message block
-            with chat_history_container: # Ensure we are writing inside the fixed-height container
-                with st.chat_message("assistant", avatar="🤖"):
-                    # Use a placeholder in the chat message block for streaming
-                    response_container = st.empty()
-                    
-                    with st.spinner(f"Analyzing data for '{current_prompt[:30]}...'"):
-                        full_response = ""
-                        try:
-                            chat = st.session_state.chat_session
-                            response = chat.send_message(current_prompt, stream=True)
-                            
-                            for chunk in response:
-                                if chunk.text:
-                                    full_response += chunk.text
-                                    # Update the container to show the progress + cursor
-                                    response_container.markdown(full_response + "▌") 
-                            
-                            response_container.markdown(full_response) # Final message after stream ends
-                            
-                        except Exception as e:
-                            full_response = f"An error occurred: {e}"
-                            st.error(full_response)
-
-            # 3. Add final, clean AI response to history
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
-            # Force a final rerun to clear the streaming placeholder and redraw the full history
-            st.rerun()
-
-    st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
+            if not api_key_configured:
+                st.info(
+                    "AI Assistant requires a valid API key. "
+                    "Configure GEMINI_API_KEY in .streamlit/secrets.toml to enable."
+                )
+            else:
+                _render_chat_panel(summary_kpis, country_kpis)

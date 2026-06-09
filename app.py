@@ -456,10 +456,15 @@ def render_login_page():
             display: none !important;
         }
         
-        /* Center content */
-        .main .block-container {
-            max-width: 500px !important;
-            padding: 2rem !important;
+        /* Constrain the login content to a centered, responsive card width.
+           Targets the current Streamlit DOM (the old `.main .block-container`
+           selector no longer matches, which is why it stretched full-width). */
+        [data-testid="stMainBlockContainer"],
+        [data-testid="stAppViewBlockContainer"],
+        .block-container {
+            max-width: 460px !important;
+            padding: 2rem 1.25rem !important;
+            margin: 0 auto !important;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -467,10 +472,9 @@ def render_login_page():
     # Centered branding header using Streamlit components
     st.markdown("<div style='height: 60px;'></div>", unsafe_allow_html=True)
     
-    # Logo using columns for centering - styled professional logo
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        st.markdown(f"""
+    # Branding header — self-centered, so it spans the full (narrow) card width.
+    # (No st.columns wrapper: a middle column would squeeze the title and wrap it.)
+    st.markdown(f"""
         <div style="text-align: center;">
             <div style="
                 width: 80px;
