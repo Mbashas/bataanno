@@ -9,7 +9,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from utils.visualizations import create_stacked_area, create_treemap, COLORS, apply_theme_to_chart
-from utils.ai_insights import generate_access_insights, render_ai_insights, is_ai_available
+from utils.ai_insights import generate_access_insights, render_on_demand_insights, is_ai_available
 
 
 def show_chart(fig, **kwargs):
@@ -408,9 +408,12 @@ def render_access_page(data, countries_filter, date_range=None):
     # Get country context
     country_context = countries_filter[0] if countries_filter and len(countries_filter) == 1 else None
     
-    # Generate AI insights - only shows if AI is available
-    ai_insights = generate_access_insights(coverage_data, zone_data, country_context) if is_ai_available() else None
-    render_ai_insights(ai_insights, "🤖 AI-Powered Analysis")
+    # AI insights are generated on demand so the tab renders instantly
+    render_on_demand_insights(
+        "🤖 AI-Powered Analysis",
+        lambda: generate_access_insights(coverage_data, zone_data, country_context),
+        context_key=f"access_{country_context}",
+    )
     
     # Priority Zones Table
     col1, col2 = st.columns(2)

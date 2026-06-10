@@ -23,7 +23,7 @@ from utils.currency_config import (
     CURRENCY_CONFIG,
     EXCHANGE_RATE_DATE
 )
-from utils.ai_insights import generate_finance_insights, render_ai_insights, is_ai_available
+from utils.ai_insights import generate_finance_insights, render_on_demand_insights, is_ai_available
 from utils.visualizations import apply_theme_to_chart
 
 
@@ -910,9 +910,12 @@ def render_finance_page(data, countries_filter, date_range=None):
     # Get country context
     country_context = countries_filter[0] if countries_filter and len(countries_filter) == 1 else None
     
-    # Generate AI insights - only shows if AI is available
-    ai_insights = generate_finance_insights(finance_ai_data, country_context) if is_ai_available() else None
-    render_ai_insights(ai_insights, "🤖 AI-Powered Financial Analysis")
+    # AI insights are generated on demand so the tab renders instantly
+    render_on_demand_insights(
+        "🤖 AI-Powered Financial Analysis",
+        lambda: generate_finance_insights(finance_ai_data, country_context),
+        context_key=f"finance_{country_context}",
+    )
     
     # Key metrics summary (factual data only, no projections)
     low_occr = country_finance[country_finance['occr'] < 110]

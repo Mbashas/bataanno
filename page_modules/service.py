@@ -15,7 +15,7 @@ from utils.kpi_calculator import (
     calculate_collection_efficiency,
 )
 from utils.visualizations import create_kpi_card, COLORS
-from utils.ai_insights import generate_service_insights, render_ai_insights, is_ai_available
+from utils.ai_insights import generate_service_insights, render_on_demand_insights, is_ai_available
 from utils.visualizations import apply_theme_to_chart
 
 
@@ -427,6 +427,9 @@ def render_service_page(data, countries_filter, date_range=None):
     # Get country context
     country_context = countries_filter[0] if countries_filter and len(countries_filter) == 1 else None
     
-    # Generate AI insights - only shows if AI is available
-    ai_insights = generate_service_insights(service_ai_data, country_context) if is_ai_available() else None
-    render_ai_insights(ai_insights, "🤖 AI-Powered Service Analysis")
+    # AI insights are generated on demand so the tab renders instantly
+    render_on_demand_insights(
+        "🤖 AI-Powered Service Analysis",
+        lambda: generate_service_insights(service_ai_data, country_context),
+        context_key=f"service_{country_context}",
+    )

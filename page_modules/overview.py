@@ -186,23 +186,47 @@ def build_insights_prompt(kpis, country_kpis):
 
 
 @st.cache_data(show_spinner=False)
+def _insights_cache_key(kpis, country_kpis):
+    """Stable session-state cache key for a given data context."""
+    return f"insights_cache_{hash(build_insights_prompt(kpis, country_kpis))}"
+
+
 def get_ai_insights(kpis, country_kpis):
-    """Fetches the generated insights from the AI, using caching."""
-    if not api_key_configured:
+    """Fetches the generated insights from the AI, cached per data context."""
+    # Bail out early if AI is unavailable or was disabled after a fatal error
+    if not api_key_configured or st.session_state.get("_ai_disabled"):
         return None
-        
+
+    # Cache per context so we only hit the network ONCE per country/filter
+    # combination, instead of regenerating on every rerun.
+    cache_key = _insights_cache_key(kpis, country_kpis)
+    if cache_key in st.session_state:
+        return st.session_state[cache_key]
+
     prompt = build_insights_prompt(kpis, country_kpis)
-    
+
     try:
         model = genai.GenerativeModel(model_name=MODEL_NAME)
         response = model.generate_content(prompt)
+        st.session_state[cache_key] = response.text
         return response.text
-    except Exception as e:
-        st.error(f"AI Analysis Error: {e}")
+    except Exception:
+        # Don't disable AI session-wide on a single failed click — the caller
+        # surfaces a retry message and the button stays available.
         return None
 
 
 # --- END NEW FUNCTIONS ---
+
+
+def _set_chat_open(value):
+    """Toggle the floating chat open/closed.
+
+    Used as a button `on_click` callback so the state flips BEFORE Streamlit
+    reruns — this avoids the double-render (and the flash of a half-drawn
+    panel) you get from setting state inline and then calling st.rerun().
+    """
+    st.session_state.chat_open = value
 
 
 def _render_chat_panel(summary_kpis, country_kpis):
@@ -233,21 +257,12 @@ def _render_chat_panel(summary_kpis, country_kpis):
         st.session_state.messages and st.session_state.messages[-1]["role"] == "user"
     )
 
-    # Seed a welcome message the first time the panel opens
+    # Seed a short welcome the first time the panel opens. Kept to one line —
+    # the suggestion chips below double as examples, so no need to list them.
     if not st.session_state.messages:
         st.session_state.messages.append(
             {"role": "assistant",
-             "content": """
-Hello! I'm your **AI Data Assistant** for this dashboard.
-I can analyze all current KPI data, explain correlations, and help you navigate the system.
-
-Feel free to ask me:
-1. **Data Questions:** "What is the Cost Recovery Ratio?"
-2. **Diagnostic Questions:** "Why is our NRW a financial risk?"
-3. **System Help:** "Where can I find the country-level comparison charts?"
-
-Start by clicking one of the suggested prompts below!
-"""}
+             "content": "👋 Hi! I can analyze your dashboard data and help you find your way around. Ask me anything — or tap a suggestion below."}
         )
 
     # --- Chat history (scrollable, sized to fit the floating panel) ---
@@ -444,16 +459,30 @@ def render_overview_page(data, countries_filter, date_range=None):
 
     st.markdown("---")
     
-    # --- Key Insights Section (AI GENERATED ONLY) ---
-    if api_key_configured:
+    # --- Key Insights Section (AI GENERATED, ON-DEMAND) ---
+    # Generated only when the user asks for it, so the dashboard renders
+    # instantly when switching countries instead of blocking on the AI call.
+    if api_key_configured and not st.session_state.get("_ai_disabled"):
         st.header("💡 Key Insights")
-        
-        with st.spinner("Running AI Diagnostic Analysis..."):
-            ai_insights_markdown = get_ai_insights(summary_kpis, country_kpis)
 
+        cache_key = _insights_cache_key(summary_kpis, country_kpis)
+        already_generated = cache_key in st.session_state
+
+        if not already_generated:
+            if st.button("✨ Generate AI Insights", key="gen_insights"):
+                with st.spinner("Running AI Diagnostic Analysis..."):
+                    result = get_ai_insights(summary_kpis, country_kpis)
+                if result:
+                    st.rerun()  # redraw cleanly: hide the button, show insights
+                else:
+                    st.warning("⚠️ Couldn't generate insights. Make sure a valid GEMINI_API_KEY is configured.")
+            else:
+                st.caption("Click to generate an AI diagnostic summary for the current selection.")
+
+        # Show the result once it has been generated for this context
+        ai_insights_markdown = st.session_state.get(cache_key)
         if ai_insights_markdown:
             st.markdown(ai_insights_markdown)
-        # If no AI insights available, show nothing (no fallback)
     
     # --- 2. AI Chat Assistant: floating toggle widget (bottom-right) ---
 
@@ -462,42 +491,45 @@ def render_overview_page(data, countries_filter, date_range=None):
         st.session_state.chat_open = False
     chat_is_open = st.session_state.chat_open
 
-    # Pin the widget to the bottom-right corner. Streamlit tags keyed
-    # containers with a `st-key-<key>` class that we can target with CSS.
-    if chat_is_open:
-        # `!important` is required so the opaque card background wins over
-        # Streamlit's default (transparent) vertical-block styling.
-        panel_style = (
-            "width: 420px; max-width: 92vw;"
-            "background-color: #FFFFFF !important;"
-            "border: 1px solid rgba(17, 63, 103, 0.15) !important;"
-            "border-radius: 14px !important;"
-            "padding: 0.75rem 1rem 0.5rem 1rem !important;"
-            "box-shadow: 0 10px 30px rgba(17, 63, 103, 0.25) !important;"
-            "max-height: 85vh; overflow-y: auto;"
-        )
-    else:
-        panel_style = "width: auto;"
-
+    # The CSS below is STATIC (identical every run). The outer widget only
+    # handles positioning; the white card styling lives on `.st-key-chat_card`,
+    # which is rendered ONLY when open. This is what prevents the transition
+    # flashes (the card style never lands on the bare bubble, and the bubble
+    # style never balloons the open panel).
     st.markdown(
-        f"""
+        """
         <style>
-        .st-key-ai_chat_widget {{
+        /* Outer wrapper: positioning only. `fit-content` is required — without
+           it Streamlit's default `width: 100%` makes this fixed element span
+           the whole viewport, pushing the bubble off-screen. */
+        .st-key-ai_chat_widget {
             position: fixed;
             bottom: 1.5rem;
             right: 1.5rem;
             z-index: 1000;
-            {panel_style}
-        }}
-        /* Circular floating action button when collapsed */
-        .st-key-chat_fab button {{
+            width: fit-content !important;
+        }
+        /* Expanded chat card — only present in the DOM while open */
+        .st-key-chat_card {
+            width: 420px;
+            max-width: 92vw;
+            background-color: #FFFFFF !important;
+            border: 1px solid rgba(17, 63, 103, 0.15) !important;
+            border-radius: 14px !important;
+            padding: 0.75rem 1rem 0.5rem 1rem !important;
+            box-shadow: 0 10px 30px rgba(17, 63, 103, 0.25) !important;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        /* Circular floating action button — only present while collapsed */
+        .st-key-chat_fab button {
             border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            font-size: 1.6rem;
+            width: 56px;
+            height: 56px;
+            font-size: 1.5rem;
             padding: 0;
-            box-shadow: 0 6px 18px rgba(17, 63, 103, 0.35);
-        }}
+            box-shadow: 0 2px 8px rgba(17, 63, 103, 0.35);
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -509,21 +541,22 @@ def render_overview_page(data, countries_filter, date_range=None):
             # Collapsed: show only the floating action button
             fab = st.container(key="chat_fab")
             with fab:
-                if st.button("💬", help="Ask the AI Data Assistant"):
-                    st.session_state.chat_open = True
-                    st.rerun()
+                st.button("💬", help="Ask the AI Data Assistant",
+                          on_click=_set_chat_open, args=(True,))
         else:
-            # Expanded: header bar with a close control, then the chat panel
-            head_l, head_r = st.columns([0.8, 0.2], vertical_alignment="center")
-            head_l.markdown("#### 💬 AI Data Assistant")
-            if head_r.button("✕", key="chat_close", help="Close assistant", use_container_width=True):
-                st.session_state.chat_open = False
-                st.rerun()
+            # Expanded: the white card holds the header + chat panel
+            card = st.container(key="chat_card")
+            with card:
+                head_l, head_r = st.columns([0.8, 0.2], vertical_alignment="center")
+                head_l.markdown("#### 💬 AI Data Assistant")
+                head_r.button("✕", key="chat_close", help="Close assistant",
+                              use_container_width=True,
+                              on_click=_set_chat_open, args=(False,))
 
-            if not api_key_configured:
-                st.info(
-                    "AI Assistant requires a valid API key. "
-                    "Configure GEMINI_API_KEY in .streamlit/secrets.toml to enable."
-                )
-            else:
-                _render_chat_panel(summary_kpis, country_kpis)
+                if not api_key_configured:
+                    st.info(
+                        "AI Assistant requires a valid API key. "
+                        "Configure GEMINI_API_KEY in .streamlit/secrets.toml to enable."
+                    )
+                else:
+                    _render_chat_panel(summary_kpis, country_kpis)

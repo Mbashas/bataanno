@@ -6,6 +6,7 @@ Built with Streamlit for utility managers in Uganda, Cameroon, Lesotho, and Mala
 """
 
 import streamlit as st
+import streamlit.components.v1 as components
 from datetime import datetime, timedelta
 import sys
 from pathlib import Path
@@ -102,6 +103,37 @@ def load_data_cached():
             st.session_state.data = data
             st.session_state.data_loaded = True
     return st.session_state.data
+
+
+def _scroll_to_top_on_enter(view_key):
+    """Scroll the page to the top once, when a new view is first entered.
+
+    Streamlit preserves the previous scroll position across reruns, so moving
+    from a scrolled-down home page into a long dashboard leaves you partway
+    down the page. We emit a one-shot scroll-to-top only when the view actually
+    changes (tracked in session state), so it never fights scrolling within a
+    page.
+    """
+    if st.session_state.get("_scrolled_view") == view_key:
+        return
+    st.session_state["_scrolled_view"] = view_key
+    components.html(
+        """
+        <script>
+            const doc = window.parent.document;
+            const targets = [
+                doc.querySelector('section.main'),
+                doc.querySelector('[data-testid="stMain"]'),
+                doc.querySelector('[data-testid="stAppViewContainer"]'),
+                doc.scrollingElement || doc.documentElement,
+            ];
+            for (const el of targets) {
+                if (el) { el.scrollTo({top: 0, left: 0, behavior: 'auto'}); }
+            }
+        </script>
+        """,
+        height=0,
+    )
 
 
 def get_zones_for_country(country, data):
@@ -388,7 +420,10 @@ def render_current_page(data, countries_filter, date_range):
 
 def render_country_dashboard(data, selected_country, zones_filter, date_range):
     """Render country dashboard with tabs for different domains"""
-    
+
+    # Start at the top when entering/switching a country (not on every rerun)
+    _scroll_to_top_on_enter(f"country_{selected_country}")
+
     # Check if reports should be shown
     if st.session_state.get('show_reports', False):
         st.session_state.show_reports = False
@@ -557,7 +592,13 @@ def main():
         
         # Login form
         authenticator.login(location='main')
-        
+
+        # login() may have just authenticated (or rejected) the submitted form.
+        # If the status changed, rerun so the top-level routing reflects it on
+        # THIS click — otherwise the user has to click Login twice.
+        if st.session_state.get("authentication_status") is not None:
+            st.rerun()
+
         theme = get_theme()
         st.markdown(f"""
         <div style="text-align: center; margin-top: 24px; padding: 14px; background: {theme['info_bg']}; border-radius: 8px; border: 1px solid {theme['border']};">
@@ -577,6 +618,12 @@ def main():
         render_login_page()
         
         authenticator.login(location='main')
+
+        # If the user corrected their credentials, route to the dashboard on
+        # this click instead of requiring a second submit.
+        if st.session_state.get("authentication_status"):
+            st.rerun()
+
         st.error("❌ Username or password is incorrect")
         st.stop()
     
@@ -618,6 +665,7 @@ def main():
             
             if selected_country is None:
                 # Landing Page Mode: Show home page with country cards
+                _scroll_to_top_on_enter("home")
                 render_sidebar_landing(authenticator)
                 home.render_home_page(data, None, None)
             else:

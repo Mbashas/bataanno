@@ -85,14 +85,11 @@ def _generate_insights(prompt: str, cache_key: str) -> Optional[str]:
         # Cache the result
         st.session_state[f"ai_cache_{cache_key}"] = result
         return result
-    except Exception as e:
-        error_msg = str(e).lower()
-        # If API key is invalid, disable AI for the session
-        if 'api_key' in error_msg or 'invalid' in error_msg or '400' in error_msg:
-            st.session_state['_ai_disabled'] = True
-        else:
-            # Mark this specific request as failed
-            st.session_state[f"ai_failed_{cache_key}"] = True
+    except Exception:
+        # Mark only THIS request as failed so we don't retry the network call
+        # on every rerun. We intentionally do NOT disable AI session-wide for a
+        # single failure, so on-demand insight buttons stay available elsewhere.
+        st.session_state[f"ai_failed_{cache_key}"] = True
         return None
 
 
@@ -262,6 +259,44 @@ def render_ai_insights(insights: Optional[str], section_title: str = "💡 Key I
         # Use markdown for proper bullet point rendering
         st.markdown(insights)
     # If no AI insights, show nothing - no fallback content
+
+
+def render_on_demand_insights(section_title, generator, context_key,
+                              button_label="✨ Generate AI Insights"):
+    """
+    Render a button-gated AI insights block.
+
+    Pages/tabs never block on the AI at first render — the model is only called
+    when the user clicks the button. The button STAYS visible afterwards so the
+    user can regenerate or retry after a failure, and a failed call shows a
+    clear warning instead of silently removing the section.
+
+    Args:
+        section_title: Header shown above the block.
+        generator: Zero-arg callable returning insight text (or None). It is
+            responsible for its own caching.
+        context_key: String unique to the current data context (e.g. country).
+            Keeps each selection's result separate.
+        button_label: Label for the generate button.
+    """
+    # Only hide entirely when AI isn't configured at all (no/placeholder key).
+    if not is_ai_available():
+        return
+
+    st.subheader(section_title)
+    result_key = f"_insights_result_{context_key}"
+
+    if st.button(button_label, key=f"gen_{context_key}"):
+        with st.spinner("Generating AI analysis..."):
+            # Store a sentinel on failure so we can tell "not yet run" apart
+            # from "ran but failed".
+            st.session_state[result_key] = generator() or "__failed__"
+
+    result = st.session_state.get(result_key)
+    if result and result != "__failed__":
+        st.markdown(result)
+    elif result == "__failed__":
+        st.warning("⚠️ Couldn't generate insights. Make sure a valid GEMINI_API_KEY is configured.")
 
 
 def clear_insights_cache(domain: Optional[str] = None):

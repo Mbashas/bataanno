@@ -10,7 +10,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from utils.kpi_calculator import calculate_nrw
 from utils.visualizations import create_trend_line, create_comparison_bar, create_waterfall_chart, COLORS
-from utils.ai_insights import generate_production_insights, render_ai_insights, is_ai_available
+from utils.ai_insights import generate_production_insights, render_on_demand_insights, is_ai_available
 from utils.visualizations import apply_theme_to_chart
 
 
@@ -401,9 +401,12 @@ def render_production_page(data, countries_filter, date_range=None):
     # Get country context
     country_context = countries_filter[0] if countries_filter and len(countries_filter) == 1 else None
     
-    # Generate AI insights - only shows if AI is available
-    ai_insights = generate_production_insights(production_ai_data, country_context) if is_ai_available() else None
-    render_ai_insights(ai_insights, "🤖 AI-Powered Production Analysis")
+    # AI insights are generated on demand so the tab renders instantly
+    render_on_demand_insights(
+        "🤖 AI-Powered Production Analysis",
+        lambda: generate_production_insights(production_ai_data, country_context),
+        context_key=f"production_{country_context}",
+    )
     
     # Data tables
     col1, col2 = st.columns(2)
