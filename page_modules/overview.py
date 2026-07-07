@@ -219,16 +219,6 @@ def get_ai_insights(kpis, country_kpis):
 # --- END NEW FUNCTIONS ---
 
 
-def _set_chat_open(value):
-    """Toggle the floating chat open/closed.
-
-    Used as a button `on_click` callback so the state flips BEFORE Streamlit
-    reruns — this avoids the double-render (and the flash of a half-drawn
-    panel) you get from setting state inline and then calling st.rerun().
-    """
-    st.session_state.chat_open = value
-
-
 def _render_chat_panel(summary_kpis, country_kpis):
     """
     Render the inner chat experience (history, suggested prompts, input and
@@ -484,45 +474,26 @@ def render_overview_page(data, countries_filter, date_range=None):
         if ai_insights_markdown:
             st.markdown(ai_insights_markdown)
     
-    # --- 2. AI Chat Assistant: floating toggle widget (bottom-right) ---
-
-    # Collapsed/expanded state persists across reruns
-    if "chat_open" not in st.session_state:
-        st.session_state.chat_open = False
-    chat_is_open = st.session_state.chat_open
-
-    # The CSS below is STATIC (identical every run). The outer widget only
-    # handles positioning; the white card styling lives on `.st-key-chat_card`,
-    # which is rendered ONLY when open. This is what prevents the transition
-    # flashes (the card style never lands on the bare bubble, and the bubble
-    # style never balloons the open panel).
+    # --- 2. AI Chat Assistant: floating chat bubble (bottom-right) ---
+    # Built on st.popover: open/close happens client-side (no rerun, so no
+    # transition flashes), the panel renders in Streamlit's overlay layer (it
+    # cannot scatter into the page flow), and a popover is a supported inline
+    # location for st.chat_input (a bare container is not — that's what caused
+    # the input to escape and pin itself full-width to the page bottom).
     st.markdown(
         """
         <style>
-        /* Outer wrapper: positioning only. `fit-content` is required — without
-           it Streamlit's default `width: 100%` makes this fixed element span
-           the whole viewport, pushing the bubble off-screen. */
-        .st-key-ai_chat_widget {
+        /* Pin just the popover trigger to the bottom-right corner,
+           raised above the Streamlit footer / branding strip */
+        .st-key-chat_popover {
             position: fixed;
-            bottom: 1.5rem;
+            bottom: 4rem;
             right: 1.5rem;
-            z-index: 1000;
+            z-index: 999999;
             width: fit-content !important;
         }
-        /* Expanded chat card — only present in the DOM while open */
-        .st-key-chat_card {
-            width: 420px;
-            max-width: 92vw;
-            background-color: #FFFFFF !important;
-            border: 1px solid rgba(17, 63, 103, 0.15) !important;
-            border-radius: 14px !important;
-            padding: 0.75rem 1rem 0.5rem 1rem !important;
-            box-shadow: 0 10px 30px rgba(17, 63, 103, 0.25) !important;
-            max-height: 85vh;
-            overflow-y: auto;
-        }
-        /* Circular floating action button — only present while collapsed */
-        .st-key-chat_fab button {
+        /* Style the trigger as a circular chat bubble */
+        .st-key-chat_popover button {
             border-radius: 50%;
             width: 56px;
             height: 56px;
@@ -530,29 +501,21 @@ def render_overview_page(data, countries_filter, date_range=None):
             padding: 0;
             box-shadow: 0 2px 8px rgba(17, 63, 103, 0.35);
         }
+        /* Give the panel content a chat-window width */
+        .st-key-chat_panel {
+            width: min(400px, 85vw);
+        }
         </style>
         """,
         unsafe_allow_html=True,
     )
 
-    widget = st.container(key="ai_chat_widget")
-    with widget:
-        if not chat_is_open:
-            # Collapsed: show only the floating action button
-            fab = st.container(key="chat_fab")
-            with fab:
-                st.button("💬", help="Ask the AI Data Assistant",
-                          on_click=_set_chat_open, args=(True,))
-        else:
-            # Expanded: the white card holds the header + chat panel
-            card = st.container(key="chat_card")
-            with card:
-                head_l, head_r = st.columns([0.8, 0.2], vertical_alignment="center")
-                head_l.markdown("#### 💬 AI Data Assistant")
-                head_r.button("✕", key="chat_close", help="Close assistant",
-                              use_container_width=True,
-                              on_click=_set_chat_open, args=(False,))
-
+    anchor = st.container(key="chat_popover")
+    with anchor:
+        with st.popover("💬", help="Ask the AI Data Assistant"):
+            panel = st.container(key="chat_panel")
+            with panel:
+                st.markdown("#### 💬 AI Data Assistant")
                 if not api_key_configured:
                     st.info(
                         "AI Assistant requires a valid API key. "

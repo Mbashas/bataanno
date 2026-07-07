@@ -247,19 +247,26 @@ def generate_css():
         .stApp {{
             background-color: {t['bg_main']} !important;
         }}
+
+        /* Streamlit's fixed top header strip stays light unless overridden */
+        [data-testid="stHeader"] {{
+            background-color: {t['bg_main']} !important;
+        }}
         
-        /* Force light text colors on main content in dark mode */
-        .main,
-        .main p,
-        .main span,
-        .main div,
-        .main label,
-        .main h1,
-        .main h2,
-        .main h3,
-        .main h4,
-        .main h5,
-        .main h6,
+        /* Force light text colors on main content in dark mode.
+           Scoped to [data-testid="stMain"]: the legacy `.main` class no longer
+           exists in current Streamlit, which left these rules dead. */
+        [data-testid="stMain"],
+        [data-testid="stMain"] p,
+        [data-testid="stMain"] span,
+        [data-testid="stMain"] div,
+        [data-testid="stMain"] label,
+        [data-testid="stMain"] h1,
+        [data-testid="stMain"] h2,
+        [data-testid="stMain"] h3,
+        [data-testid="stMain"] h4,
+        [data-testid="stMain"] h5,
+        [data-testid="stMain"] h6,
         [data-testid="stMarkdownContainer"],
         [data-testid="stMarkdownContainer"] p,
         [data-testid="stMarkdownContainer"] span,
@@ -307,12 +314,12 @@ def generate_css():
         }}
         
         /* Dark mode custom HTML content - force readable text */
-        .main div[style*="background"] p,
-        .main div[style*="background"] span,
-        .main div[style*="background"] h1,
-        .main div[style*="background"] h2,
-        .main div[style*="background"] h3,
-        .main div[style*="background"] h4 {{
+        [data-testid="stMain"] div[style*="background"] p,
+        [data-testid="stMain"] div[style*="background"] span,
+        [data-testid="stMain"] div[style*="background"] h1,
+        [data-testid="stMain"] div[style*="background"] h2,
+        [data-testid="stMain"] div[style*="background"] h3,
+        [data-testid="stMain"] div[style*="background"] h4 {{
             color: {t['text_primary']} !important;
         }}
         
@@ -420,8 +427,8 @@ def generate_css():
         }}
         
         /* Code blocks in markdown - CRITICAL for dark mode */
-        .main pre,
-        .main code,
+        [data-testid="stMain"] pre,
+        [data-testid="stMain"] code,
         [data-testid="stMarkdownContainer"] pre,
         [data-testid="stMarkdownContainer"] code,
         .stCodeBlock,
@@ -464,10 +471,10 @@ def generate_css():
         }}
         
         /* White box issue - force dark bg on any white containers in main */
-        .main [style*="background: rgb(255, 255, 255)"],
-        .main [style*="background-color: rgb(255, 255, 255)"],
-        .main [style*="background: white"],
-        .main [style*="background-color: white"] {{
+        [data-testid="stMain"] [style*="background: rgb(255, 255, 255)"],
+        [data-testid="stMain"] [style*="background-color: rgb(255, 255, 255)"],
+        [data-testid="stMain"] [style*="background: white"],
+        [data-testid="stMain"] [style*="background-color: white"] {{
             background: {t['bg_card']} !important;
             background-color: {t['bg_card']} !important;
         }}
@@ -514,19 +521,15 @@ def generate_css():
         .stApp > div,
         [data-testid="stAppViewContainer"],
         [data-testid="stAppViewBlockContainer"],
-        .main,
-        .main > div,
-        section.main,
-        section.main > div {{
+        [data-testid="stMain"],
+        [data-testid="stMain"] > div {{
             background: {t['bg_main'] if is_dark else 'transparent'} !important;
         }}
-        
-        /* Override Streamlit's default white backgrounds */
-        .st-emotion-cache-zy6yx3,
-        .st-emotion-cache-tn0cau,
-        .block-container,
-        .e4man114,
-        .e1wguzas3 {{
+
+        /* Override Streamlit's default white backgrounds.
+           (Version-specific st-emotion-cache-* hashes removed: they change
+           between Streamlit builds and were dead selectors.) */
+        .block-container {{
             background: transparent !important;
         }}
         
