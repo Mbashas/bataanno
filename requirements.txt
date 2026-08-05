@@ -3,6 +3,11 @@
 
 # Core framework
 streamlit>=1.28.0
+# starlette 1.4.0 made `thread_minimum_size` a required kwarg on
+# GZipResponder.__init__. Streamlit's MediaAwareGZipMiddleware subclasses it
+# without passing that kwarg, so every /_stcore/* request 500s and the app
+# fails its health checks. Remove this pin once Streamlit ships a fix.
+starlette<1.4
 streamlit-authenticator>=0.3.1
 
 # LLM integration (New Addition!)
