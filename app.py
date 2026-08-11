@@ -41,6 +41,10 @@ from assets.logo_svg import get_wash_logo_svg, get_wash_logo_colored_svg, get_lo
 # Import page modules
 from page_modules import home, overview, production, service, access, finance, reports
 
+# Import the floating AI chat assistant (rendered once per dashboard, outside
+# the tab container, so it stays visible on every tab)
+from utils.ai_chat import render_floating_chat
+
 
 # Page configuration
 st.set_page_config(
@@ -478,6 +482,13 @@ def render_country_dashboard(data, selected_country, zones_filter, date_range):
     
     with tab_finance:
         finance.render_finance_page(data, [selected_country], date_range)
+
+    # Floating AI chat assistant.
+    # Rendered OUTSIDE the `with tab_*` blocks on purpose: Streamlit hides
+    # inactive tab panels with `display: none`, so a bubble anchored inside a tab
+    # disappears on every other tab. At this level it floats over all five tabs,
+    # and it receives the full cross-domain data snapshot (see utils/ai_context.py).
+    render_floating_chat(data, [selected_country])
 
 
 def render_login_page():

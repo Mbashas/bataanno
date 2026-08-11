@@ -17,9 +17,9 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # --------------------------------------------------------------------------
 
-# New imports for Gemini Chatbot
+# Gemini is still used here for the on-demand "Key Insights" block.
+# The chat assistant itself now lives in utils/ai_chat.py.
 import google.generativeai as genai
-from google.generativeai.types import GenerationConfig
 
 # NOTE: calculate_all_country_kpis is now available from this import
 from utils.kpi_calculator import calculate_summary_kpis, calculate_country_kpis, calculate_all_country_kpis, get_kpi_status 
@@ -44,95 +44,12 @@ except Exception as e:
 MODEL_NAME = "gemini-2.5-flash"
 
 
-def get_chat_session(system_prompt):
-    """Initializes the chat session with the system prompt."""
-    if api_key_configured:
-        try:
-            # Initialize the model with system instruction
-            model = genai.GenerativeModel(
-                model_name=MODEL_NAME,
-                system_instruction=system_prompt
-            )
-            # Start a chat session
-            chat = model.start_chat(history=[])
-            # Return the chat object AND the system prompt for later comparison
-            return chat, system_prompt 
-        except Exception as e:
-            st.error(f"Error initializing chat session: {e}")
-            return None, None
-    return None, None
 
-
-def build_system_prompt(kpis, country_kpis):
-    """
-    Constructs the detailed instruction (system prompt) for the AI, 
-    injecting the current KPI data and system structure for context.
-    """
-    # --- KPI LIST FOR AI CONTEXT ---
-    kpi_list = (
-        f"Total Households: {kpis.get('total_households', {}).get('value', 0):,.0f}",
-        f"Access Rate Growth: {kpis.get('access_rate_growth', {}).get('value', 0):.1f}% (Target: >0%)",
-        f"NRW (Non-Revenue Water): {kpis.get('nrw', {}).get('value', 0):.1f}% (Benchmark: ≤25%)",
-        f"Revenue Collection Efficiency: {kpis.get('collection_efficiency', {}).get('value', 0):.1f}% (Target: ≥95%)",
-        f"Total Reported Complaints: {kpis.get('complaints_count', {}).get('value', 0):,.0f}",
-        f"Water Service Coverage: {kpis.get('water_service_coverage', {}).get('value', 0):.1f}% (Target: 100%)",
-        f"Service Continuity: {kpis.get('service_continuity', {}).get('value', 0):.1f} hrs/day (Benchmark: 24 hrs)",
-        f"Cost Recovery Ratio: {kpis.get('cost_recovery_ratio', {}).get('value', 0):.1f}% (Target: ≥100%)",
-        f"Operational Profit/Loss: {kpis.get('operational_profit_loss', {}).get('value', 0):,.0f} (Target: >0)",
-        f"Avg. Complaint Resolution Time: {kpis.get('complaint_resolution_time', {}).get('value', 0):.1f} days (Target: ≤5 days)",
-    )
-    
-    # --- DIAGNOSTIC INSIGHTS ---
-    diagnostic_insights = (
-        "High NRW negatively impacts cost recovery, as water is produced but not paid for.",
-        "A Cost Recovery Ratio below 100% indicates unsustainable operations, as operating costs are not covered by revenue.",
-        "Negative Access Rate Growth suggests that service expansion is not keeping pace with population growth or urban development.",
-    )
-
-    # --- DETAILED COUNTRY DATA INJECTION ---
-    country_data_string = ""
-    if country_kpis:
-        country_data_string = "\n\nDETAILED COUNTRY KPIS:\n"
-        for country, data in country_kpis.items():
-            country_data_string += f"--- {country} ---\n"
-            country_data_string += f"- NRW: {data.get('nrw', 0):.1f}% (Target ≤25%)\n"
-            country_data_string += f"- Cost Recovery Ratio: {data.get('cost_recovery_ratio', 0):.1f}% (Target ≥100%)\n"
-            country_data_string += f"- Water Service Coverage: {data.get('water_service_coverage', 0):.1f}% (Target 100%)\n"
-            
-    # --- APPLICATION STRUCTURE INJECTION (NEW) ---
-    application_structure = (
-        "This application is a Streamlit dashboard with pages accessible via the sidebar.",
-        "The available pages are: Overview (Current Page), Production, Finance, Service, and Reports.",
-        "To view country-level comparison charts and zonal data, users must navigate to the **Reports** page in the sidebar.",
-        "Historical trends are available on the **Production** page."
-    )
-    
-    # --- END: Application Structure Injection ---
-    
-    return f"""
-    You are an expert Water Sector Performance Analyst chatbot. Your sole purpose is to provide analysis and answer questions based ONLY on the data and insights provided below.
-    
-    CURRENT KPIS (The current data context from the dashboard):
-    {'\n'.join([f'- {item}' for item in kpi_list])}
-    
-    {country_data_string}
-    
-    DIAGNOSTIC INSIGHTS (The contextual rules and correlations):
-    {'\n'.join([f'- {item}' for item in diagnostic_insights])}
-    
-    APPLICATION STRUCTURE (The Streamlit app navigation context):
-    {'\n'.join([f'- {item}' for item in application_structure])}
-
-    RULES:
-    1. Respond concisely and professionally.
-    2. Directly reference the data values provided in the CURRENT KPIS or DETAILED COUNTRY KPIS when possible.
-    3. If the user asks about system navigation (e.g., 'where to find X'), use the **APPLICATION STRUCTURE** context to guide them.
-    4. If the data is not provided or the question is outside the scope of the CURRENT KPIS, DIAGNOSTIC INSIGHTS, and APPLICATION STRUCTURE, state clearly that you can only answer based on the current context.
-    5. Detect the language of the user's query and respond entirely in that detected language.
-    
-    Based on the CURRENT KPIS, the biggest operational challenge is likely related to **Non-Revenue Water (NRW)**, as the average is {kpis.get('nrw', {}).get('value', 0):.1f}%, which needs to be below the benchmark of ≤25% to ensure efficient resource use. A major financial challenge is the **Cost Recovery Ratio**, which is {kpis.get('cost_recovery_ratio', {}).get('value', 0):.1f}%, signaling that current revenues are not fully covering operating expenses.
-    """
-
+# NOTE: The floating chat assistant used to live in this file. It now lives in
+# `utils/ai_chat.py` and is rendered once per dashboard by `app.py`, OUTSIDE the
+# tab container — so the bubble stays visible on every tab and the model gets
+# the full cross-domain data snapshot (see `utils/ai_context.py`) instead of
+# only these Overview KPIs.
 
 # --- NEW FUNCTION FOR DYNAMIC INSIGHTS ---
 
@@ -217,121 +134,6 @@ def get_ai_insights(kpis, country_kpis):
 
 
 # --- END NEW FUNCTIONS ---
-
-
-def _render_chat_panel(summary_kpis, country_kpis):
-    """
-    Render the inner chat experience (history, suggested prompts, input and
-    export) for the floating AI Data Assistant widget.
-    """
-    # Rebuild the session whenever the underlying KPI context changes
-    system_prompt = build_system_prompt(summary_kpis, country_kpis)
-
-    context_changed = (
-        "chat_session" not in st.session_state
-        or st.session_state.get("chat_session") is None
-        or st.session_state.get("chat_system_prompt") != system_prompt
-    )
-
-    if context_changed:
-        with st.spinner("Initializing AI context..."):
-            st.session_state.chat_session, st.session_state.chat_system_prompt = get_chat_session(system_prompt)
-            st.session_state.messages = []  # Reset history for new context
-
-    chat = st.session_state.chat_session
-    if not chat:
-        return
-
-    # Are we waiting for an AI response to the last user message?
-    is_waiting_for_response = (
-        st.session_state.messages and st.session_state.messages[-1]["role"] == "user"
-    )
-
-    # Seed a short welcome the first time the panel opens. Kept to one line —
-    # the suggestion chips below double as examples, so no need to list them.
-    if not st.session_state.messages:
-        st.session_state.messages.append(
-            {"role": "assistant",
-             "content": "👋 Hi! I can analyze your dashboard data and help you find your way around. Ask me anything — or tap a suggestion below."}
-        )
-
-    # --- Chat history (scrollable, sized to fit the floating panel) ---
-    chat_history_container = st.container(height=300, border=True)
-    with chat_history_container:
-        for message in st.session_state.messages:
-            avatar = "🤖" if message["role"] == "assistant" else "👤"
-            with st.chat_message(message["role"], avatar=avatar):
-                st.markdown(message["content"])
-
-    prompt = None
-    submitted_prompt = None
-
-    # --- Suggested prompts (only before the conversation starts) ---
-    conversation_started = any(m["role"] == "user" for m in st.session_state.messages)
-    if not conversation_started and not is_waiting_for_response:
-        suggested_prompts = [
-            "What is the biggest operational challenge (NRW)?",
-            "How does low Revenue Collection affect profit/loss?",
-            "Where can I find the Service Continuity trend?",
-        ]
-        for i, prompt_text in enumerate(suggested_prompts):
-            if st.button(prompt_text, use_container_width=True, key=f"suggested_btn_{i}"):
-                st.session_state.input_prompt = prompt_text
-                st.rerun()
-
-    # --- Capture prompt: suggested button OR the chat input box ---
-    if "input_prompt" in st.session_state and st.session_state.input_prompt:
-        prompt = st.session_state.input_prompt
-        del st.session_state.input_prompt
-    elif not is_waiting_for_response:
-        submitted_prompt = st.chat_input("Ask me about coverage, costs, or efficiency...")
-        if submitted_prompt:
-            prompt = submitted_prompt
-
-    # Phase 1: capture prompt and rerun to immediately show the user's message
-    if prompt:
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        st.rerun()
-
-    # --- Export the dialog ---
-    if st.session_state.messages:
-        dialog_content = ""
-        for msg in st.session_state.messages:
-            role = "USER" if msg["role"] == "user" else "ASSISTANT"
-            dialog_content += f"**{role}:**\n{msg['content']}\n\n---\n\n"
-
-        st.download_button(
-            label="📥 Export Chat (TXT)",
-            data=dialog_content,
-            file_name="ai_data_assistant_dialog.txt",
-            mime="text/plain",
-            type="secondary",
-            use_container_width=True,
-        )
-
-    # Phase 2: stream the AI response
-    if is_waiting_for_response:
-        current_prompt = st.session_state.messages[-1]["content"]
-
-        with chat_history_container:
-            with st.chat_message("assistant", avatar="🤖"):
-                response_container = st.empty()
-                with st.spinner(f"Analyzing data for '{current_prompt[:30]}...'"):
-                    full_response = ""
-                    try:
-                        chat = st.session_state.chat_session
-                        response = chat.send_message(current_prompt, stream=True)
-                        for chunk in response:
-                            if chunk.text:
-                                full_response += chunk.text
-                                response_container.markdown(full_response + "▌")
-                        response_container.markdown(full_response)
-                    except Exception as e:
-                        full_response = f"An error occurred: {e}"
-                        st.error(full_response)
-
-        st.session_state.messages.append({"role": "assistant", "content": full_response})
-        st.rerun()
 
 
 def render_overview_page(data, countries_filter, date_range=None):
@@ -473,53 +275,3 @@ def render_overview_page(data, countries_filter, date_range=None):
         ai_insights_markdown = st.session_state.get(cache_key)
         if ai_insights_markdown:
             st.markdown(ai_insights_markdown)
-    
-    # --- 2. AI Chat Assistant: floating chat bubble (bottom-right) ---
-    # Built on st.popover: open/close happens client-side (no rerun, so no
-    # transition flashes), the panel renders in Streamlit's overlay layer (it
-    # cannot scatter into the page flow), and a popover is a supported inline
-    # location for st.chat_input (a bare container is not — that's what caused
-    # the input to escape and pin itself full-width to the page bottom).
-    st.markdown(
-        """
-        <style>
-        /* Pin just the popover trigger to the bottom-right corner,
-           raised above the Streamlit footer / branding strip */
-        .st-key-chat_popover {
-            position: fixed;
-            bottom: 4rem;
-            right: 1.5rem;
-            z-index: 999999;
-            width: fit-content !important;
-        }
-        /* Style the trigger as a circular chat bubble */
-        .st-key-chat_popover button {
-            border-radius: 50%;
-            width: 56px;
-            height: 56px;
-            font-size: 1.5rem;
-            padding: 0;
-            box-shadow: 0 2px 8px rgba(17, 63, 103, 0.35);
-        }
-        /* Give the panel content a chat-window width */
-        .st-key-chat_panel {
-            width: min(400px, 85vw);
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    anchor = st.container(key="chat_popover")
-    with anchor:
-        with st.popover("💬", help="Ask the AI Data Assistant"):
-            panel = st.container(key="chat_panel")
-            with panel:
-                st.markdown("#### 💬 AI Data Assistant")
-                if not api_key_configured:
-                    st.info(
-                        "AI Assistant requires a valid API key. "
-                        "Configure GEMINI_API_KEY in .streamlit/secrets.toml to enable."
-                    )
-                else:
-                    _render_chat_panel(summary_kpis, country_kpis)
