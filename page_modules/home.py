@@ -11,6 +11,9 @@ from utils.kpi_calculator import calculate_summary_kpis, calculate_country_kpis
 from utils.visualizations import COLORS
 from utils.theme import get_theme, BRAND, LIGHT_THEME
 from assets.logo_svg import get_wash_logo_colored_svg
+# Inline SVG flags: the 🇺🇬-style emoji render as "UG" letter boxes on Windows,
+# which ships no glyphs for regional-indicator pairs.
+from assets.flags import get_flag_svg
 
 
 def render_home_page(data, countries_filter, date_range=None):
@@ -84,28 +87,28 @@ def render_home_page(data, countries_filter, date_range=None):
     countries_config = [
         {
             'name': 'Uganda',
-            'emoji': '🇺🇬',
+            'emoji': get_flag_svg('Uganda'),
             'description': 'National Water and Sewerage Corporation (NWSC)',
             'zones': 'Central, Kawempe, Nakawa, Rubaga',
             'color': theme['countries']['Uganda']
         },
         {
             'name': 'Malawi',
-            'emoji': '🇲🇼',
+            'emoji': get_flag_svg('Malawi'),
             'description': 'Lilongwe Water Board (LWB)',
             'zones': 'Capital Hill, Kanengo, Lumbadzi, Old Town',
             'color': theme['countries']['Malawi']
         },
         {
             'name': 'Lesotho',
-            'emoji': '🇱🇸',
+            'emoji': get_flag_svg('Lesotho'),
             'description': 'Water and Sewerage Company (WASCO)',
             'zones': 'Maseru Urban, Maseru Rural, Rural Hinterland',
             'color': theme['countries']['Lesotho']
         },
         {
             'name': 'Cameroon',
-            'emoji': '🇨🇲',
+            'emoji': get_flag_svg('Cameroon'),
             'description': 'Camerounaise Des Eaux (CDE)',
             'zones': 'Yaounde 1-7',
             'color': theme['countries']['Cameroon']
@@ -118,7 +121,7 @@ def render_home_page(data, countries_filter, date_range=None):
     
     # Calculate KPIs for each country
     country_names = ['Uganda', 'Malawi', 'Lesotho', 'Cameroon']
-    country_emojis = {'Uganda': '🇺🇬', 'Malawi': '🇲🇼', 'Lesotho': '🇱🇸', 'Cameroon': '🇨🇲'}
+    country_emojis = {name: get_flag_svg(name) for name in country_names}
     
     # Display country KPI summary cards in 2x2 grid
     row1_col1, row1_col2 = st.columns(2)

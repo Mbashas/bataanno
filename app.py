@@ -37,6 +37,7 @@ from utils.theme import (
 
 # Import custom logo
 from assets.logo_svg import get_wash_logo_svg, get_wash_logo_colored_svg, get_login_illustration_svg
+from assets.flags import get_flag_svg
 
 # Import page modules
 from page_modules import home, overview, production, service, access, finance, reports
@@ -311,9 +312,9 @@ def render_sidebar_country_dashboard(raw_data, selected_country, authenticator):
         
         st.markdown("---")
         
-        # Country indicator with flag
-        country_flags = {'Uganda': '🇺🇬', 'Malawi': '🇲🇼', 'Lesotho': '🇱🇸', 'Cameroon': '🇨🇲'}
-        flag = country_flags.get(selected_country, '🌍')
+        # Country indicator with flag (inline SVG — the 🇺🇬-style emoji render as
+        # "UG" letter boxes on Windows, which has no regional-indicator glyphs)
+        flag = get_flag_svg(selected_country)
         st.markdown(f"""
         <div style="padding: 16px; background: rgba(255,255,255,0.1); border-radius: 12px; margin-bottom: 16px; text-align: center;">
             <div style="font-size: 32px; margin-bottom: 8px;">{flag}</div>

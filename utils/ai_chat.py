@@ -44,6 +44,56 @@ try:
 except ImportError:  # pragma: no cover - depends on Streamlit version
     _DuplicateKeyError = Exception
 
+try:
+    from streamlit.errors import StreamlitAPIException as _StreamlitAPIException
+except ImportError:  # pragma: no cover - depends on Streamlit version
+    _StreamlitAPIException = Exception
+
+# Streamlit signals reruns/stops by raising. Matched by NAME because these
+# classes have moved between modules across versions, so importing them
+# directly would silently stop working on an upgrade.
+_CONTROL_FLOW_EXCEPTIONS = {
+    "RerunException",
+    "StopException",
+    "FragmentHandledException",
+}
+
+
+# --- Fragment isolation -------------------------------------------------------
+# The chat reruns the script three times per message (show the question, stream
+# the answer, settle). WITHOUT a fragment each of those reruns re-executes the
+# whole app — sidebar, all five tabs, every Plotly chart — which blanks the page
+# for seconds and closes the popover. Inside a fragment, `st.rerun(scope=
+# "fragment")` redraws ONLY the chat panel, so the dashboard behind it is never
+# torn down and the popover stays open.
+_FRAGMENT = getattr(st, "fragment", None) or getattr(st, "experimental_fragment", None)
+
+
+def _fragment(func):
+    """Apply st.fragment when available, otherwise leave the function alone."""
+    return _FRAGMENT(func) if _FRAGMENT else func
+
+
+def _rerun_chat():
+    """
+    Rerun just the chat panel, falling back to a full rerun when that is not
+    allowed.
+
+    `scope="fragment"` is only legal while a fragment rerun is in flight. The
+    same code also runs during ordinary full-app runs — the first render, or a
+    sidebar filter change landing mid-answer — and asking for fragment scope
+    there raises StreamlitAPIException, which would take the whole page down.
+    So try the cheap path, and fall back to the old full rerun if Streamlit
+    says no. Note `st.rerun()` signals via RerunException, which is control
+    flow and must NOT be swallowed — only StreamlitAPIException is caught.
+    """
+    if _FRAGMENT:
+        try:
+            st.rerun(scope="fragment")
+        except _StreamlitAPIException:
+            pass
+    st.rerun()
+
 MODEL_NAME = "gemini-2.5-flash"
 
 # Values that mean "nobody filled this in yet". Treated as no key at all, so the
@@ -138,6 +188,7 @@ def get_chat_session(system_prompt):
         return None, None
 
 
+@_fragment
 def _render_chat_panel(system_prompt):
     """
     Render the inner chat experience — history, suggested prompts, input box and
@@ -194,7 +245,7 @@ def _render_chat_panel(system_prompt):
         for i, prompt_text in enumerate(SUGGESTED_PROMPTS):
             if st.button(prompt_text, use_container_width=True, key=f"suggested_btn_{i}"):
                 st.session_state.input_prompt = prompt_text
-                st.rerun()
+                _rerun_chat()
 
     # --- Capture prompt: suggested button OR the chat input box ---
     if st.session_state.get("input_prompt"):
@@ -208,7 +259,7 @@ def _render_chat_panel(system_prompt):
     # Phase 1: capture prompt and rerun to immediately show the user's message
     if prompt:
         st.session_state.messages.append({"role": "user", "content": prompt})
-        st.rerun()
+        _rerun_chat()
 
     # --- Export the dialog ---
     if st.session_state.messages:
@@ -248,7 +299,7 @@ def _render_chat_panel(system_prompt):
                         st.error(full_response)
 
         st.session_state.messages.append({"role": "assistant", "content": full_response})
-        st.rerun()
+        _rerun_chat()
 
 
 def render_floating_chat(data, countries_filter=None):
@@ -321,6 +372,17 @@ def render_floating_chat(data, countries_filter=None):
                     )
                     return
 
-                scope_label = ", ".join(countries_filter) if countries_filter else "All countries"
-                context_text = get_dashboard_context(data, countries_filter)
-                _render_chat_panel(build_system_prompt(context_text, scope_label))
+                # Last-resort safety net. An uncaught error anywhere in here
+                # would blank the ENTIRE dashboard, not just the chat panel —
+                # which is exactly the white screen users hit. Contain it: show
+                # a note in the panel and leave the dashboard standing.
+                try:
+                    scope_label = ", ".join(countries_filter) if countries_filter else "All countries"
+                    context_text = get_dashboard_context(data, countries_filter)
+                    _render_chat_panel(build_system_prompt(context_text, scope_label))
+                except BaseException as exc:
+                    # st.rerun()/st.stop() signal through exceptions. Those are
+                    # control flow, not failures, and MUST pass through.
+                    if type(exc).__name__ in _CONTROL_FLOW_EXCEPTIONS:
+                        raise
+                    st.warning(f"⚠️ The assistant hit an error: {exc}")
