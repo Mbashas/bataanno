@@ -30,6 +30,20 @@ except ImportError:
     genai = None
 
 
+# Container keys for the floating bubble. Deliberately NOT the old
+# `chat_popover` / `chat_panel`: if a hot-reloaded process still holds an old
+# copy of overview.py that registers those keys, reusing them would collide and
+# crash the page. These names also drive the `.st-key-*` CSS selectors below.
+ANCHOR_KEY = "ai_chat_bubble"
+PANEL_KEY = "ai_chat_panel"
+
+# Raised by Streamlit when a container key is registered twice in one run.
+# Imported defensively: the class does not exist in older Streamlit versions.
+try:
+    from streamlit.errors import StreamlitDuplicateElementKey as _DuplicateKeyError
+except ImportError:  # pragma: no cover - depends on Streamlit version
+    _DuplicateKeyError = Exception
+
 MODEL_NAME = "gemini-2.5-flash"
 
 # Values that mean "nobody filled this in yet". Treated as no key at all, so the
@@ -255,45 +269,55 @@ def render_floating_chat(data, countries_filter=None):
     # location for st.chat_input (a bare container is not — that's what caused
     # the input to escape and pin itself full-width to the page bottom).
     st.markdown(
-        """
+        f"""
         <style>
         /* Pin just the popover trigger to the bottom-right corner,
            raised above the Streamlit footer / branding strip */
-        .st-key-chat_popover {
+        .st-key-{ANCHOR_KEY} {{
             position: fixed;
             bottom: 4rem;
             right: 1.5rem;
             z-index: 999999;
             width: fit-content !important;
-        }
+        }}
         /* Style the trigger as a circular chat bubble */
-        .st-key-chat_popover button {
+        .st-key-{ANCHOR_KEY} button {{
             border-radius: 50%;
             width: 56px;
             height: 56px;
             font-size: 1.5rem;
             padding: 0;
             box-shadow: 0 2px 8px rgba(17, 63, 103, 0.35);
-        }
+        }}
         /* Give the panel content a chat-window width */
-        .st-key-chat_panel {
+        .st-key-{PANEL_KEY} {{
             width: min(400px, 85vw);
-        }
+        }}
         </style>
         """,
         unsafe_allow_html=True,
     )
 
-    anchor = st.container(key="chat_popover")
+    # Streamlit raises StreamlitDuplicateElementKey if this key is already
+    # registered in the current script run, and an uncaught error takes the
+    # WHOLE page down. That can happen outside our control — e.g. Streamlit
+    # Cloud hot-patches a running process ("🔄 Updated app!") while a stale
+    # copy of a module that also drew a bubble is still in sys.modules. A
+    # second bubble is a cosmetic glitch; a crashed dashboard is not, so skip
+    # quietly instead of raising.
+    try:
+        anchor = st.container(key=ANCHOR_KEY)
+    except _DuplicateKeyError:
+        return
+
     with anchor:
         with st.popover("💬", help="Ask the AI Data Assistant"):
-            panel = st.container(key="chat_panel")
-            with panel:
+            with st.container(key=PANEL_KEY):
                 st.markdown("#### 💬 AI Data Assistant")
                 if not is_chat_available():
                     st.info(
                         "AI Assistant requires a valid API key. "
-                        "Configure GEMINI_API_KEY in .streamlit/secrets.toml to enable."
+                        "Configure GEMINI_API_KEY in the app's secrets to enable."
                     )
                     return
 
